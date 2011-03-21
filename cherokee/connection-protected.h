@@ -203,6 +203,7 @@ struct cherokee_connection {
 	void                         *mmaped;
 	off_t                         mmaped_len;
 	cherokee_iocache_entry_t     *io_entry_ref;
+	cherokee_flcache_conn_t       flcache;
 
 	/* Regular expressions
 	 */
@@ -210,7 +211,6 @@ struct cherokee_connection {
 	int                           regex_ovecsize;
 	int                           regex_host_ovector[OVECTOR_LEN];
 	int                           regex_host_ovecsize;
-
 
 	/* Content Expiration
 	 */

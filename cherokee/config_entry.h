@@ -92,11 +92,12 @@ typedef struct {
 	cherokee_http_auth_t        authentication;
 	cherokee_avl_t             *users;
 
-	/* Headers
+	/* Expiration / Cache
 	 */
 	cherokee_expiration_t       expiration;
 	time_t                      expiration_time;
 	cherokee_expiration_props_t expiration_prop;
+	cherokee_null_bool_t        flcache;
 
 	/* Encoding
 	 */

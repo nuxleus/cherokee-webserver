@@ -79,6 +79,7 @@
 #include "header-protected.h"
 #include "iocache.h"
 #include "dtm.h"
+#include "flcache.h"
 
 #define ENTRIES "core,connection"
 
@@ -171,6 +172,8 @@ cherokee_connection_new  (cherokee_connection_t **conn)
 	n->chunked_last_package = false;
 	cherokee_buffer_init (&n->chunked_len);
 
+	cherokee_flcache_conn_init (&n->flcache);
+
 	*conn = n;
 	return ret_ok;
 }
@@ -254,6 +257,10 @@ cherokee_connection_clean (cherokee_connection_t *conn)
 		cherokee_iocache_entry_unref (&conn->io_entry_ref);
 		conn->io_entry_ref = NULL;
 	}
+
+	/* Front-line cache
+	 */
+	cherokee_flcache_conn_clean (&conn->flcache);
 
 	/* TCP cork
 	 */
@@ -529,11 +536,13 @@ clean:
 	 */
 	if (conn->io_entry_ref != NULL) {
 		cherokee_iocache_entry_unref (&conn->io_entry_ref);
+		conn->io_entry_ref = NULL;
 	}
 
-	conn->io_entry_ref = NULL;
-	conn->mmaped       = NULL;
-	conn->mmaped_len   = 0;
+	conn->mmaped     = NULL;
+	conn->mmaped_len = 0;
+
+	cherokee_flcache_conn_clean (&conn->flcache);
 
 	/* It does not matter whether the previous handler wanted to
 	 * use Chunked encoding.
@@ -731,7 +740,7 @@ build_response_header (cherokee_connection_t *conn, cherokee_buffer_t *buffer)
 	if (conn->upgrade != http_upgrade_nothing) {
 		cherokee_buffer_add_str (buffer, "Connection: Upgrade"CRLF);
 
-	} else if (conn->handler && (conn->keepalive > 1)) {
+	} else if (conn->keepalive > 1) {
 		if (conn->header.version < http_version_11) {
 			cherokee_buffer_add_str     (buffer, "Connection: Keep-Alive"CRLF);
 			cherokee_buffer_add_buffer  (buffer, conn->timeout_header);
@@ -751,7 +760,8 @@ build_response_header (cherokee_connection_t *conn, cherokee_buffer_t *buffer)
 
 	/* Exit now if the handler already added all the headers
 	 */
-	if (HANDLER_SUPPORTS (conn->handler, hsupport_full_headers))
+	if ((conn->handler != NULL) &&
+	    (HANDLER_SUPPORTS (conn->handler, hsupport_full_headers)))
 		return;
 
 	/* Date
@@ -794,8 +804,13 @@ build_response_header (cherokee_connection_t *conn, cherokee_buffer_t *buffer)
 	 */
 	if (conn->encoder) {
 		cherokee_encoder_add_headers (conn->encoder, buffer);
-	}
 
+		/* Front-line Cache (in): Handler headers
+		 */
+		if (conn->flcache.mode == flcache_mode_in) {
+			cherokee_encoder_add_headers (conn->encoder, &conn->flcache.header);
+		}
+	}
 
 	/* Headers ops
 	 */
@@ -821,12 +836,24 @@ cherokee_connection_read_post (cherokee_connection_t *conn)
 ret_t
 cherokee_connection_build_header (cherokee_connection_t *conn)
 {
-	ret_t              ret;
+	ret_t ret;
+
+	/* Front-line cache
+	 */
+	if (conn->flcache.mode == flcache_mode_out) {
+		ret = cherokee_flcache_conn_send_header (&conn->flcache, conn);
+		if (ret != ret_ok) {
+			return ret;
+		}
+
+		goto out;
+	}
 
 	/* If the handler requires not to add headers, exit.
 	 */
-	if (HANDLER_SUPPORTS (conn->handler, hsupport_skip_headers))
+	else if (HANDLER_SUPPORTS (conn->handler, hsupport_skip_headers)) {
 		return ret_ok;
+	}
 
 	/* Try to get the headers from the handler
 	 */
@@ -841,6 +868,12 @@ cherokee_connection_build_header (cherokee_connection_t *conn)
 			RET_UNKNOWN(ret);
 			return ret_error;
 		}
+	}
+
+	/* Front-line Cache (in): Handler headers
+	 */
+	if (conn->flcache.mode == flcache_mode_in) {
+		cherokee_buffer_add_buffer (&conn->flcache.header, &conn->header_buffer);
 	}
 
 	/* Replies with no body cannot use chunked encoding
@@ -875,6 +908,7 @@ cherokee_connection_build_header (cherokee_connection_t *conn)
 		cherokee_connection_instance_encoder (conn);
 	}
 
+out:
 	/* Add the server headers
 	 */
 	build_response_header (conn, &conn->buffer);
@@ -1227,7 +1261,8 @@ out:
 	/* If this connection has a handler without Content-Length support
 	 * it has to count the bytes sent
 	 */
-	if (! HANDLER_SUPPORTS (conn->handler, hsupport_length)) {
+	if ((conn->handler) &&
+	    (! HANDLER_SUPPORTS (conn->handler, hsupport_length))) {
 		conn->range_end += sent;
 	}
 
@@ -1251,7 +1286,8 @@ cherokee_connection_should_include_length (cherokee_connection_t *conn)
 ret_t
 cherokee_connection_instance_encoder (cherokee_connection_t *conn)
 {
-	ret_t ret;
+	ret_t  ret;
+	char  *name = NULL;
 
 	/* Ensure that the content can be encoded
 	 */
@@ -1274,6 +1310,16 @@ cherokee_connection_instance_encoder (cherokee_connection_t *conn)
 	ret = cherokee_encoder_init (conn->encoder, conn);
 	if (unlikely (ret != ret_ok))
 		goto error;
+
+	/* Update Front-Line cache
+	 */
+	if (conn->flcache.mode == flcache_mode_in) {
+		ret = cherokee_module_get_name (MODULE(conn->encoder), &name);
+		if (likely ((ret == ret_ok) || (name != NULL))) {
+			cherokee_buffer_add (&conn->flcache.avl_node_ref->content_encoding, name, strlen(name));
+			TRACE (ENTRIES, "New entry encoded entry '%s' - %s\n", conn->request.buf, name);
+		}
+	}
 
 	cherokee_buffer_clean (&conn->encoder_buffer);
 	return ret_ok;
@@ -1364,8 +1410,6 @@ cherokee_connection_step (cherokee_connection_t *conn)
 	ret_t ret;
 	ret_t step_ret = ret_ok;
 
-	return_if_fail (conn->handler != NULL, ret_error);
-
 	/* Need to 'read' from handler ?
 	 */
 	if (conn->buffer.len > 0) {
@@ -1375,8 +1419,16 @@ cherokee_connection_step (cherokee_connection_t *conn)
 		return ret_eof;
 	}
 
+	/* Front-line cache: Serve content
+	 */
+	if (conn->flcache.mode == flcache_mode_out) {
+		return cherokee_flcache_conn_send_body (&conn->flcache, conn);
+	}
+
 	/* Do a step in the handler
 	 */
+	return_if_fail (conn->handler != NULL, ret_error);
+
 	step_ret = cherokee_handler_step (conn->handler, &conn->buffer);
 	switch (step_ret) {
 	case ret_ok:
@@ -1419,6 +1471,12 @@ cherokee_connection_step (cherokee_connection_t *conn)
 		 */
 		cherokee_buffer_swap_buffers (&conn->buffer, &conn->encoder_buffer);
 		cherokee_buffer_clean (&conn->encoder_buffer);
+	}
+
+	/* Front-line cache: Store content
+	 */
+	if (conn->flcache.mode == flcache_mode_in) {
+		cherokee_flcache_conn_write_body (&conn->flcache, conn);
 	}
 
 	/* Chunked encoding header
@@ -1575,6 +1633,7 @@ get_encoding (cherokee_connection_t *conn,
 				conn->encoder_new_func = NULL;
 				conn->encoder_props    = NULL;
 				break;
+
 			} else if (props->perms == cherokee_encoder_unset) {
 				/* Let's it be
 				 */
@@ -2264,6 +2323,9 @@ cherokee_connection_set_keepalive (cherokee_connection_t *conn)
 	if (conn->header.version == http_version_11)
 		goto granted;
 
+	if (conn->flcache.mode == flcache_mode_out)
+		goto granted;
+
 denied:
 	TRACE (ENTRIES, "Keep-alive %s\n", "denied");
 	conn->keepalive = 0;
@@ -2298,10 +2360,12 @@ cherokee_connection_set_chunked_encoding (cherokee_connection_t *conn)
 	 *  - The server configuration allows to use it
 	 *  - It's a keep-alive connection
 	 *  - It's a HTTP/1.1 connection
+	 *  - It's not serving content from the Front-line cache
 	 */
 	conn->chunked_encoding = ((CONN_SRV(conn)->chunked_encoding) &&
 				  (conn->keepalive > 0) &&
-				  (conn->header.version == http_version_11));
+				  (conn->header.version == http_version_11) &&
+				  (conn->flcache.mode != flcache_mode_out));
 }
 
 ret_t
@@ -2340,8 +2404,10 @@ cherokee_connection_create_encoder (cherokee_connection_t *conn,
 	/* No encoders are accepted
 	 */
 	if ((encoders_accepted == NULL) ||
-	    (encoders_accepted->root == NULL))
+	    (cherokee_avl_is_empty (AVL_GENERIC(encoders_accepted))))
+	{
 		return ret_ok;
+	}
 
 	/* Keepalive (Content-Length) connections cannot use encoders.
 	 * The transferred information length would change.

@@ -1359,6 +1359,8 @@ init.h \
 init.c \
 threading.h \
 threading.c \
+avl_generic.h \
+avl_generic.c \
 avl.h \
 avl.c \
 avl_r.h \
@@ -1442,7 +1444,11 @@ logger.c \
 logger_writer.h \
 logger_writer.c \
 xrealip.h \
-xrealip.c
+xrealip.c \
+flcache.h \
+flcache.c \
+avl_flcache.h \
+avl_flcache.c
 
 
 libcherokee_client_la_SOURCES = \

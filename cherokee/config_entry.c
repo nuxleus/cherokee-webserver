@@ -68,6 +68,7 @@ cherokee_config_entry_init (cherokee_config_entry_t *entry)
 	entry->expiration           = cherokee_expiration_none;
 	entry->expiration_time      = 0;
 	entry->expiration_prop      = cherokee_expiration_prop_none;
+	entry->flcache              = NULLB_NULL;
 
 	entry->encoders             = NULL;
 	entry->limit_bps            = 0;
@@ -235,6 +236,10 @@ cherokee_config_entry_complete (cherokee_config_entry_t *entry,
 		entry->no_log = source->no_log;
 	}
 
+	if (entry->flcache == NULLB_NULL) {
+		entry->flcache = source->flcache;
+	}
+
 	if (NULLI_IS_NULL(entry->timeout_lapse) && (source->timeout_lapse != NULLI_NULL))
 	{
 		entry->timeout_lapse  = source->timeout_lapse;
@@ -263,7 +268,8 @@ cherokee_config_entry_print (cherokee_config_entry_t *entry)
 	printf ("auth_realm:                %s\n", entry->auth_realm ? entry->auth_realm->buf : "");
 	printf ("users:                     %p\n", entry->users);
 	printf ("expiration type:           %d\n", entry->expiration);
-	printf ("expiration_time:           %lu\n", entry->expiration_time);
+	printf ("expiration time:           %lu\n", entry->expiration_time);
+	printf ("flcache:                   %d\n", NULLB_TO_STR(entry->flcache));
 	printf ("encoders_accepted:         %p\n", entry->encoders);
 	printf ("limit bps:                 %d\n", entry->limit_bps);
 	printf ("no_log:                    %s\n", NULLB_TO_STR(entry->no_log));

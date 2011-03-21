@@ -33,6 +33,7 @@
 #include "rule_default.h"
 #include "gen_evhost.h"
 #include "header_op.h"
+#include "flcache.h"
 
 #include <errno.h>
 
@@ -402,6 +403,11 @@ init_entry_property (cherokee_config_node_t *conf, void *data)
 
 	} else if (equal_buf_str (&conf->key, "only_secure")) {
 		entry->only_secure = !! atoi(conf->val.buf);
+
+	} else if (equal_buf_str (&conf->key, "flcache")) {
+		if (equal_buf_str (&conf->val, "1")) {
+			entry->flcache = true;
+		}
 
 	} else if (equal_buf_str (&conf->key, "expiration")) {
 		/* Expiration
@@ -989,7 +995,8 @@ configure_virtual_server_property (cherokee_config_node_t *conf, void *data)
 	} else if (equal_buf_str (&conf->key, "ssl_ciphers")) {
 		cherokee_buffer_add_buffer (&vserver->ciphers, &conf->val);
 
-	} else if (equal_buf_str (&conf->key, "collector")) {
+	} else if (equal_buf_str (&conf->key, "flcache") ||
+		   equal_buf_str (&conf->key, "collector")) {
 		/* Handled later on */
 
 	} else if (equal_buf_str (&conf->key, "disabled")) {
@@ -1039,6 +1046,7 @@ cherokee_virtual_server_configure (cherokee_virtual_server_t *vserver,
 				   cherokee_config_node_t    *config)
 {
 	ret_t                   ret;
+	cherokee_boolean_t      active  = false;
 	cherokee_config_node_t *subconf = NULL;
 
 	/* Set the priority
@@ -1058,8 +1066,9 @@ cherokee_virtual_server_configure (cherokee_virtual_server_t *vserver,
 	/* Parse properties
 	 */
 	ret = cherokee_config_node_while (config, configure_virtual_server_property, vserver);
-	if (ret != ret_ok)
+	if (ret != ret_ok) {
 		return ret;
+	}
 
 	/* Information collectors
 	 */
@@ -1069,6 +1078,24 @@ cherokee_virtual_server_configure (cherokee_virtual_server_t *vserver,
 			return ret_error;
 		}
 	}
+
+	/* Front-line cache:
+	 * Needs 'nick' to be set previously
+	 */
+	ret = cherokee_config_node_get (config, "flcache", &subconf);
+	if ((ret == ret_ok) && atoi(subconf->val.buf))
+	{
+		ret = cherokee_flcache_new (&vserver->flcache);
+		if (ret != ret_ok) {
+			return ret;
+		}
+
+		ret = cherokee_flcache_configure (vserver->flcache, subconf, vserver);
+		if (ret != ret_ok) {
+			return ret;
+		}
+	}
+
 
 	/* Perform some sanity checks
 	 */

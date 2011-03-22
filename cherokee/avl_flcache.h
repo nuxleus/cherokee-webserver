@@ -45,6 +45,10 @@ typedef enum {
  */
 typedef struct {
 	cherokee_avl_generic_node_t  base;
+
+	cint_t                       ref_count;
+	cherokee_list_t              to_del;
+
 	cherokee_buffer_t            request;
 	cherokee_buffer_t            content_encoding;
 
@@ -70,6 +74,7 @@ typedef struct {
 
 ret_t cherokee_avl_flcache_init     (cherokee_avl_flcache_t *avl);
 ret_t cherokee_avl_flcache_mrproper (cherokee_avl_flcache_t *avl, cherokee_func_free_t free_value);
+ret_t cherokee_avl_flcache_cleanup  (cherokee_avl_flcache_t *avl);
 
 ret_t cherokee_avl_flcache_add      (cherokee_avl_flcache_t       *avl,
 				     cherokee_connection_t        *conn,
@@ -78,7 +83,6 @@ ret_t cherokee_avl_flcache_add      (cherokee_avl_flcache_t       *avl,
 ret_t cherokee_avl_flcache_get      (cherokee_avl_flcache_t       *avl,
 				     cherokee_connection_t        *conn,
 				     cherokee_avl_flcache_node_t **node);
-
 
 CHEROKEE_END_DECLS
 

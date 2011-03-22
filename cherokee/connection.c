@@ -614,7 +614,8 @@ build_response_header_authentication (cherokee_connection_t *conn, cherokee_buff
 
 void
 cherokee_connection_add_expiration_header (cherokee_connection_t *conn,
-					   cherokee_buffer_t     *buffer)
+					   cherokee_buffer_t     *buffer,
+					   cherokee_boolean_t     use_maxage)
 {
 	time_t    exp_time;
 	struct tm exp_tm;
@@ -631,11 +632,13 @@ cherokee_connection_add_expiration_header (cherokee_connection_t *conn,
 			cherokee_buffer_add_str (buffer, "Cache-Control: ");
 		}
 		break;
+
 	case cherokee_expiration_max:
 		cherokee_buffer_add_str (buffer, "Expires: Thu, 31 Dec 2037 23:55:55 GMT" CRLF);
 		cherokee_buffer_add_str (buffer, "Cache-Control: max-age=315360000");
 		first_prop = false;
 		break;
+
 	case cherokee_expiration_time:
 		exp_time = (cherokee_bogonow_now + conn->expiration_time);
 		cherokee_gmtime (&exp_time, &exp_tm);
@@ -645,10 +648,15 @@ cherokee_connection_add_expiration_header (cherokee_connection_t *conn,
 		cherokee_buffer_add (buffer, bufstr, szlen);
 		cherokee_buffer_add_str (buffer, CRLF);
 
-		cherokee_buffer_add_str (buffer, "Cache-Control: max-age=");
-		cherokee_buffer_add_long10 (buffer, conn->expiration_time);
-		first_prop = false;
+		if (use_maxage) {
+			cherokee_buffer_add_str (buffer, "Cache-Control: max-age=");
+			cherokee_buffer_add_long10 (buffer, conn->expiration_time);
+			first_prop = false;
+		} else if (conn->expiration_prop) {
+			cherokee_buffer_add_str (buffer, "Cache-Control: ");
+		}
 		break;
+
 	default:
 		SHOULDNT_HAPPEN;
 	}
@@ -707,8 +715,11 @@ cherokee_connection_add_expiration_header (cherokee_connection_t *conn,
 
 
 static void
-build_response_header (cherokee_connection_t *conn, cherokee_buffer_t *buffer)
+build_response_header (cherokee_connection_t *conn,
+		       cherokee_buffer_t     *buffer)
 {
+	cherokee_buffer_t *tmp1 = THREAD_TMP_BUF1(CONN_THREAD(conn));
+
 	/* Build the response header.
 	 */
 	cherokee_buffer_clean (buffer);
@@ -789,7 +800,17 @@ build_response_header (cherokee_connection_t *conn, cherokee_buffer_t *buffer)
 	/* Expiration
 	 */
 	if (conn->expiration != cherokee_expiration_none) {
-		cherokee_connection_add_expiration_header (conn, buffer);
+		/* Front-line Cache (in) */
+		if (conn->flcache.mode == flcache_mode_in) {
+			cherokee_buffer_clean (tmp1);
+			cherokee_connection_add_expiration_header (conn, tmp1, false);
+			cherokee_buffer_add_buffer (buffer, tmp1);
+			cherokee_buffer_add_buffer (&conn->flcache.header, tmp1);
+		}
+		/* Straight */
+		else {
+			cherokee_connection_add_expiration_header (conn, buffer, true);
+		}
 	}
 
 	/* Redirected connections
@@ -803,12 +824,16 @@ build_response_header (cherokee_connection_t *conn, cherokee_buffer_t *buffer)
 	/* Encoder headers
 	 */
 	if (conn->encoder) {
-		cherokee_encoder_add_headers (conn->encoder, buffer);
-
-		/* Front-line Cache (in): Handler headers
-		 */
+		/* Front-line Cache (in) */
 		if (conn->flcache.mode == flcache_mode_in) {
-			cherokee_encoder_add_headers (conn->encoder, &conn->flcache.header);
+			cherokee_buffer_clean (tmp1);
+			cherokee_encoder_add_headers (conn->encoder, tmp1);
+			cherokee_buffer_add_buffer (buffer, tmp1);
+			cherokee_buffer_add_buffer (&conn->flcache.header, tmp1);
+		}
+		/* Straight */
+		else {
+			cherokee_encoder_add_headers (conn->encoder, buffer);
 		}
 	}
 

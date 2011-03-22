@@ -26,6 +26,7 @@
 #include "avl_flcache.h"
 #include "connection.h"
 #include "connection-protected.h"
+#include "list.h"
 #include "util.h"
 
 #define ENTRIES "avl,flcache"
@@ -57,9 +58,12 @@ node_new (cherokee_avl_flcache_node_t **node,
 	CHEROKEE_NEW_STRUCT (n, avl_flcache_node);
 
 	conn_to_node (conn, n);
-	n->conn_ref = conn;
-
 	cherokee_buffer_init (&n->file);
+	INIT_LIST_HEAD (&n->to_del);
+
+	n->conn_ref    = conn;
+	n->ref_count   = 0;
+
 	n->status      = flcache_status_undef;
 	n->file_size   = 0;
 	n->valid_until = TIME_MAX;
@@ -215,6 +219,11 @@ node_cmp (cherokee_avl_flcache_node_t *A,
 
 	UNUSED (avl);
 
+	/* Comparing with itself
+	 */
+	if (A == B)
+		return 0;
+
 	/* 1.- Request
 	 */
 	re = cmp_request (A, B);
@@ -295,4 +304,56 @@ cherokee_avl_flcache_get (cherokee_avl_flcache_t       *avl,
 	tmp.conn_ref = conn;
 
 	return cherokee_avl_generic_get (AVL_GENERIC(avl), AVL_GENERIC_NODE(&tmp), (void **)node);
+}
+
+
+static ret_t
+cleanup_while_func (cherokee_avl_generic_node_t *node_generic, void *value, void *param)
+{
+	cherokee_list_t             *to_delete = LIST(param);
+	cherokee_avl_flcache_node_t *node      = AVL_FLCACHE_NODE(node_generic);
+
+	UNUSED(value);
+
+	if (node->valid_until >= cherokee_bogonow_now)
+		return ret_ok;
+
+	if (node->ref_count > 0)
+		return ret_ok;
+
+	cherokee_list_add (&node->to_del, to_delete);
+	return ret_ok;
+}
+
+ret_t
+cherokee_avl_flcache_cleanup (cherokee_avl_flcache_t *avl)
+{
+	ret_t            ret;
+	cherokee_list_t *i, *j;
+	cherokee_list_t  to_delete = LIST_HEAD_INIT(to_delete);
+
+	/* Add expired entries to 'to_delete'
+	 */
+	cherokee_avl_generic_while (AVL_GENERIC(avl), cleanup_while_func, &to_delete, NULL, NULL);
+
+	/* Delete entries
+	 */
+	list_for_each_safe (i, j, &to_delete) {
+		cherokee_avl_flcache_node_t *node = list_entry (i, cherokee_avl_flcache_node_t, to_del);
+
+		TRACE (ENTRIES, "Removing Front-line cache file: '%s'\n", node->file.buf);
+
+		/* Delete local file */
+		if (! cherokee_buffer_is_empty (&node->file)) {
+			cherokee_unlink (node->file.buf);
+		}
+
+		/* Delete try from the AVL tree*/
+		ret = cherokee_avl_generic_del (AVL_GENERIC(avl), AVL_GENERIC_NODE(node), NULL);
+		if (unlikely (ret != ret_ok)) {
+			; // TO DO
+		}
+	}
+
+	return ret_ok;
 }

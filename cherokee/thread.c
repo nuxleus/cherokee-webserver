@@ -1095,6 +1095,16 @@ process_active_connections (cherokee_thread_t *thd)
 			    (cherokee_flcache_req_is_storable (CONN_VSRV(conn)->flcache, conn) == ret_ok))
 			{
 				cherokee_flcache_req_set_store (CONN_VSRV(conn)->flcache, conn);
+
+				/* Update expiration
+				 */
+				if (conn->flcache.mode == flcache_mode_in) {
+					if (entry.expiration == cherokee_expiration_epoch) {
+						conn->flcache.avl_node_ref->valid_until = 0;
+					} else if (entry.expiration == cherokee_expiration_time) {
+						conn->flcache.avl_node_ref->valid_until = cherokee_bogonow_now + entry.expiration_time;
+					}
+				}
 			}
 
 			conn->phase = phase_init;
@@ -1207,30 +1217,6 @@ process_active_connections (cherokee_thread_t *thd)
 		case phase_add_headers:
 		add_headers:
 
-			/* Front-line cache: send
-			 */
-			/* if (conn->flcache.mode == flcache_mode_out) { */
-			/* 	ret = cherokee_flcache_conn_send_header (&conn->flcache, conn); */
-			/* 	switch (ret) { */
-			/* 	case ret_ok: */
-			/* 		goto send_headers_EXIT; */
-
-			/* 	case ret_eagain: */
-			/* 		continue; */
-
-			/* 	case ret_eof: */
-			/* 	case ret_error: */
-			/* 		conn->error_code = http_internal_error; */
-			/* 		cherokee_connection_setup_error_handler (conn); */
-			/* 		continue; */
-
-			/* 	default: */
-			/* 		RET_UNKNOWN(ret); */
-			/* 		close_active_connection (thd, conn, true); */
-			/* 	} */
-
-			/* } */
-
 			/* Build the header
 			 */
 			ret = cherokee_connection_build_header (conn);
@@ -1273,7 +1259,6 @@ process_active_connections (cherokee_thread_t *thd)
 				}
 			}
 
-		send_headers_EXIT:
 			conn->phase = phase_send_headers;
 
 		case phase_send_headers:

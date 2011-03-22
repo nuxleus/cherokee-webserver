@@ -98,7 +98,7 @@ cherokee_flcache_req_get_cached (cherokee_flcache_t    *flcache,
 	/* Check the cache
 	 */
 	ret = cherokee_avl_flcache_get (&flcache->request_map, conn, &entry);
-	if (ret != ret_ok){
+	if ((ret != ret_ok) || (entry == NULL)) {
 		TRACE (ENTRIES, "Front Line Cache: miss; '%s'\n", conn->request.buf);
 		return ret_not_found;
 	}
@@ -107,6 +107,13 @@ cherokee_flcache_req_get_cached (cherokee_flcache_t    *flcache,
 	 */
 	if (entry->status != flcache_status_ready) {
 		TRACE (ENTRIES, "Front Line Cache: almost-hit; '%s' being cached\n", conn->request.buf);
+		return ret_deny;
+	}
+
+	/* Is it fresh enough?
+	 */
+	if (entry->valid_until < cherokee_bogonow_now) {
+		TRACE (ENTRIES, "Front Line Cache: almost-hit; '%s' expired already\n", conn->request.buf);
 		return ret_deny;
 	}
 
@@ -123,6 +130,8 @@ cherokee_flcache_req_get_cached (cherokee_flcache_t    *flcache,
 
 	/* Store the reference to the object
 	 */
+	entry->ref_count += 1;
+
 	conn->flcache.avl_node_ref = entry;
 	conn->flcache.mode         = flcache_mode_out;
 
@@ -166,7 +175,7 @@ cherokee_flcache_req_is_storable (cherokee_flcache_t    *flcache,
 
 	/* Cookies
 	 */
-	ret = cherokee_header_has_known (&conn->header, header_set_cookie);
+	ret = cherokee_header_has_known (&conn->header, header_cookie);
 	if (ret == ret_ok)
 		return ret_deny;
 
@@ -202,6 +211,10 @@ cherokee_flcache_conn_clean (cherokee_flcache_conn_t *flcache_conn)
 		if (flcache_conn->avl_node_ref->status == flcache_status_storing) {
 			flcache_conn->avl_node_ref->status = flcache_status_ready;
 		}
+
+		/* Reference countring
+		 */
+		flcache_conn->avl_node_ref->ref_count -= 1;
 
 		flcache_conn->avl_node_ref = NULL;
 	}
@@ -239,9 +252,10 @@ cherokee_flcache_req_set_store (cherokee_flcache_t    *flcache,
 		return ret;
 	}
 
-	/* Set mode - Writing
+	/* Set mode, ref count
 	 */
-	entry->status = flcache_status_storing;
+	entry->ref_count += 1;
+	entry->status     = flcache_status_storing;
 
 	/* Filename
 	 */
@@ -450,6 +464,22 @@ cherokee_flcache_conn_send_body (cherokee_flcache_conn_t *flcache_conn,
 //		printf ("errno %d\n", errno);
 		// TODO: check errno
 		return ret;
+	}
+
+	return ret_ok;
+}
+
+
+ret_t
+cherokee_flcache_cleanup (cherokee_flcache_t *flcache)
+{
+	ret_t ret;
+
+	TRACE (ENTRIES, "Cleaning up vserver cache '%s'\n", flcache->local_directory.buf);
+
+	ret = cherokee_avl_flcache_cleanup (&flcache->request_map);
+	if (unlikely (ret != ret_ok)) {
+		return ret_error;
 	}
 
 	return ret_ok;

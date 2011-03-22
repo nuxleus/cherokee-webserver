@@ -30,6 +30,7 @@
 #include "plugin_loader.h"
 #include "util.h"
 #include "avl_flcache.h"
+#include "dtm.h"
 
 #define ENTRIES "flcache"
 
@@ -155,6 +156,11 @@ cherokee_flcache_req_is_storable (cherokee_flcache_t    *flcache,
 	/* HTTPs
 	 */
 	if (conn->socket.is_tls == TLS)
+		return ret_deny;
+
+	/* Authenticated
+	 */
+	if (conn->validator != NULL)
 		return ret_deny;
 
 	/* Expiration
@@ -356,6 +362,63 @@ cherokee_flcache_req_set_store (cherokee_flcache_t    *flcache,
 /* } */
 
 
+static void
+inspect_header (cherokee_flcache_conn_t *flcache_conn,
+		cherokee_buffer_t       *header)
+{
+	char                        *value;
+	char                        *begin;
+	char                        *end;
+	const char                  *header_end;
+	char                         chr_end;
+	cherokee_avl_flcache_node_t *node        = flcache_conn->avl_node_ref;
+
+	begin      = header->buf;
+	header_end = header->buf + header->len;
+
+	while ((begin < header_end)) {
+		end = cherokee_header_get_next_line (begin);
+		if (end == NULL)
+			break;
+
+		chr_end = *end;
+		*end    = '\0';
+
+		/* Expire
+		 */
+		if (strncasecmp (begin, "Expires:", 8) == 0) {
+			value = begin + 8;
+			while ((*value == ' ') && (value < end)) value++;
+
+			node->valid_until = 0;
+			cherokee_dtm_str2time (value, end - value, &node->valid_until);
+		}
+		/* Cache-Control
+		 */
+		else if (strncasecmp (begin, "Cache-Control:", 14) == 0) {
+			value = begin + 8;
+			while ((*value == ' ') && (value < end)) value++;
+
+			if (strcasestr (begin, "private") ||
+			    strcasestr (begin, "no-cache") ||
+			    strcasestr (begin, "no-store") ||
+			    strcasestr (begin, "must-revalidate") ||
+			    strcasestr (begin, "proxy-revalidate"))
+			{
+				node->valid_until = 0;
+			}
+		}
+
+
+	next:
+		*end = chr_end;
+
+		while ((*end == CHR_CR) || (*end == CHR_LF))
+			end++;
+		begin = end;
+	}
+}
+
 
 ret_t
 cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn)
@@ -363,6 +426,10 @@ cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn)
 	ssize_t written;
 
 	TRACE (ENTRIES, "Writing header: %d bytes to fd=%d\n", flcache_conn->header.len, flcache_conn->fd);
+
+	/* Inspect header
+	 */
+	inspect_header (flcache_conn, &flcache_conn->header);
 
 	/* Filter header
 	cherokee_buffer_ensure_size (&header_filtered, header_in->len + 1);

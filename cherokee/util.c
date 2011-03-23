@@ -2468,3 +2468,16 @@ cherokee_unlink (const char *path)
 
 	return re;
 }
+
+
+int
+cherokee_open (const char *path, int oflag, int mode)
+{
+	int re;
+
+	do {
+		re = open (path, oflag, mode);
+	} while ((re < 0) && (errno == EINTR));
+
+	return re;
+}

@@ -124,7 +124,7 @@ cherokee_flcache_req_get_cached (cherokee_flcache_t    *flcache,
 
 	/* Open the cached file
 	 */
-	conn->flcache.fd = open (entry->file.buf, O_RDONLY | O_NOFOLLOW);
+	conn->flcache.fd = cherokee_open (entry->file.buf, O_RDONLY | O_NOFOLLOW, 0);
 	if (unlikely (conn->flcache.fd == -1)) {
 		return ret_error;
 	}
@@ -287,7 +287,7 @@ cherokee_flcache_req_set_store (cherokee_flcache_t    *flcache,
 
 	/* Open file
 	 */
-	conn->flcache.fd = open (entry->file.buf, O_WRONLY | O_CREAT | O_NOFOLLOW, S_IRUSR|S_IWUSR);
+	conn->flcache.fd = cherokee_open (entry->file.buf, O_WRONLY | O_CREAT | O_NOFOLLOW, S_IRUSR|S_IWUSR);
 	if (conn->flcache.fd == -1) {
 		/* Try to create 'dir'
 		 */
@@ -304,7 +304,7 @@ cherokee_flcache_req_set_store (cherokee_flcache_t    *flcache,
 
 		/* Second chance
 		 */
-		conn->flcache.fd = open (entry->file.buf, O_WRONLY | O_CREAT | O_NOFOLLOW, S_IRUSR|S_IWUSR);
+		conn->flcache.fd = cherokee_open (entry->file.buf, O_WRONLY | O_CREAT | O_NOFOLLOW, S_IRUSR|S_IWUSR);
 		if (conn->flcache.fd == -1) {
 			return ret_error;
 		}
@@ -317,58 +317,6 @@ cherokee_flcache_req_set_store (cherokee_flcache_t    *flcache,
 
 	return ret_ok;
 }
-
-
-/* static ret_t */
-/* filter_header_to_store (cherokee_buffer_t *in, */
-/* 			cherokee_buffer_t *out) */
-/* { */
-/* 	char               *begin; */
-/* 	char               *end; */
-/* 	const char         *header_end; */
-/* 	char                chr_end; */
-/* 	cherokee_boolean_t  first_line = true; */
-
-/* 	begin      = in->buf; */
-/* 	header_end = in->buf + in->len; */
-
-/* 	while ((begin < header_end)) { */
-/* 		end = cherokee_header_get_next_line (begin); */
-/* 		if (end == NULL) */
-/* 			break; */
-
-/* 		chr_end = *end; */
-/* 		*end    = '\0'; */
-
-/* 		/\* Skip the 1st line */
-/* 		 *\/ */
-/* 		if (first_line) */
-/* 			goto next; */
-
-/* 		/\* Skip certain headers */
-/* 		 *\/ */
-/* 		if ((strncasecmp (begin, "Date:",               5) == 0) || */
-/* 		    (strncasecmp (begin, "Transfer-Encoding:", 18) == 0)) */
-/* 		{ */
-/* 			goto next; */
-/* 		} */
-
-/* 		/\* Add the header */
-/* 		 *\/ */
-/* 		cherokee_buffer_add (out, begin, end - begin); */
-
-/* 	next: */
-/* 		*end = chr_end; */
-
-/* 		while ((*end == CHR_CR) || (*end == CHR_LF)) */
-/* 			end++; */
-/* 		begin = end; */
-/* 	} */
-
-
-
-/* 	return ret_ok; */
-/* } */
 
 
 static void
@@ -445,7 +393,10 @@ cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn)
 
 	/* Write length
 	 */
-	written = write (flcache_conn->fd, &flcache_conn->header.len, sizeof(int));
+	do {
+		written = write (flcache_conn->fd, &flcache_conn->header.len, sizeof(int));
+	} while ((written == -1) && (errno == EINTR));
+
 	if (unlikely (written != sizeof(int))) {
 		// TODO: check errno
 		return ret_error;
@@ -453,7 +404,10 @@ cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn)
 
 	/* Write the header
 	 */
-	written = write (flcache_conn->fd, flcache_conn->header.buf, flcache_conn->header.len);
+	do {
+		written = write (flcache_conn->fd, flcache_conn->header.buf, flcache_conn->header.len);
+	} while ((written == -1) && (errno == EINTR));
+
 	if (unlikely (written != flcache_conn->header.len)) {
 		// TODO: check errno
 		return ret_error;
@@ -472,7 +426,10 @@ cherokee_flcache_conn_write_body (cherokee_flcache_conn_t *flcache_conn,
 
 	TRACE (ENTRIES, "Writing body: %d bytes to fd=%d\n", conn->buffer.len, flcache_conn->fd);
 
-	written = write (flcache_conn->fd, conn->buffer.buf, conn->buffer.len);
+	do {
+		written = write (flcache_conn->fd, conn->buffer.buf, conn->buffer.len);
+	} while ((written == -1) && (errno == EINTR));
+
 	if (unlikely (written != conn->buffer.len)) {
 		// TODO: check errno
 		return ret_error;
@@ -494,7 +451,10 @@ cherokee_flcache_conn_send_header (cherokee_flcache_conn_t *flcache_conn,
 
 	/* Add cached headers
 	 */
-	got = read (flcache_conn->fd, &len, sizeof(int));
+	do {
+		got = read (flcache_conn->fd, &len, sizeof(int));
+	} while ((got == -1) && (errno == EINTR));
+
 	if (unlikely (got != sizeof(int))) {
 		// TODO: check errno
 		return ret_error;

@@ -293,7 +293,7 @@ cherokee_logger_writer_open (cherokee_logger_writer_t *writer)
 		goto out;
 
 	case cherokee_logger_writer_file:
-		writer->fd = open (writer->filename.buf, O_APPEND | O_WRONLY | O_CREAT | O_LARGEFILE | O_NOFOLLOW, 0640);
+		writer->fd = cherokee_open (writer->filename.buf, O_APPEND | O_WRONLY | O_CREAT | O_LARGEFILE | O_NOFOLLOW, 0640);
 		if (writer->fd == -1) {
 			LOG_ERROR (CHEROKEE_ERROR_LOGGER_WRITER_APPEND, writer->filename.buf);
 			ret = ret_error;

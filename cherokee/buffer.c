@@ -1024,7 +1024,7 @@ cherokee_buffer_read_file (cherokee_buffer_t *buf, char *filename)
 
 	/* Open the file
 	 */
-	f = open (filename, O_RDONLY | O_BINARY);
+	f = cherokee_open (filename, O_RDONLY | O_BINARY, 0);
 	if (f < 0) {
 		LOG_ERRNO(errno, cherokee_err_error, CHEROKEE_ERROR_BUFFER_OPEN_FILE, filename);
 		return ret_error;

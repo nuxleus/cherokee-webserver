@@ -1066,12 +1066,14 @@ cherokee_buffer_read_from_fd (cherokee_buffer_t *buf, int fd, size_t size, size_
 
 	/* Read data at the end of the buffer
 	 */
-	len = read (fd, &(buf->buf[buf->len]), size);
+	do {
+		len = read (fd, &(buf->buf[buf->len]), size);
+	} while ((len == -1) && (errno == EINTR));
+
 	if (len < 0) {
 		/* On error
 		 */
 		switch (errno) {
-		case EINTR:
 		case EAGAIN:
 #if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
 		case EWOULDBLOCK:

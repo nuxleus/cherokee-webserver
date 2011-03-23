@@ -2481,3 +2481,16 @@ cherokee_open (const char *path, int oflag, int mode)
 
 	return re;
 }
+
+
+ret_t
+cherokee_mkdir (const char *path, int mode)
+{
+	int re;
+
+	do {
+		re = mkdir (path, mode);
+	} while ((re < 0) && (errno == EINTR));
+
+	return re;
+}

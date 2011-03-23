@@ -459,7 +459,6 @@ cherokee_flcache_conn_send_header (cherokee_flcache_conn_t *flcache_conn,
 	} while ((got == -1) && (errno == EINTR));
 
 	if (unlikely (got != sizeof(int))) {
-		// TODO: check errno
 		return ret_error;
 	}
 
@@ -504,7 +503,7 @@ cherokee_flcache_conn_send_body (cherokee_flcache_conn_t *flcache_conn,
 	}
 
 	if (got) {
-		return ret_eagain;
+		return ret_ok;
 	}
 
 	if (ret != ret_ok) {

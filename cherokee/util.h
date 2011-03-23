@@ -151,6 +151,8 @@ int   cherokee_lstat         (const char *restrict path, struct stat *buf);
 int   cherokee_fstat         (int filedes, struct stat *buf);
 int   cherokee_open          (const char *path, int oflag, int mode);
 int   cherokee_unlink        (const char *path);
+int   cherokee_pipe          (int fildes[2]);
+
 ret_t cherokee_gethostbyname (const char *hostname, void *addr);
 ret_t cherokee_gethostname   (cherokee_buffer_t *buf);
 ret_t cherokee_syslog        (int priority, cherokee_buffer_t *buf);

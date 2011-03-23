@@ -231,7 +231,7 @@ launch_logger_process (cherokee_logger_writer_t *writer)
 	int   to_log_fds[2];
 	pid_t pid;
 
-	if (pipe (to_log_fds)) {
+	if (cherokee_pipe (to_log_fds)) {
 		LOG_ERRNO (errno, cherokee_err_error, CHEROKEE_ERROR_LOGGER_WRITER_PIPE, errno);
 		return ret_error;
 	}

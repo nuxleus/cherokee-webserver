@@ -2494,3 +2494,16 @@ cherokee_mkdir (const char *path, int mode)
 
 	return re;
 }
+
+
+int
+cherokee_pipe (int fildes[2])
+{
+	int re;
+
+	do {
+		re = pipe (fildes);
+	} while ((re < 0) && (errno == EINTR));
+
+	return re;
+}

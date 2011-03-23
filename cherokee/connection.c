@@ -1447,7 +1447,25 @@ cherokee_connection_step (cherokee_connection_t *conn)
 	/* Front-line cache: Serve content
 	 */
 	if (conn->flcache.mode == flcache_mode_out) {
-		return cherokee_flcache_conn_send_body (&conn->flcache, conn);
+		ret = cherokee_flcache_conn_send_body (&conn->flcache, conn);
+		switch (ret) {
+		case ret_ok:
+			return ret_ok;
+
+		case ret_eof:
+		case ret_eof_have_data:
+			BIT_SET (conn->options, conn_op_got_eof);
+			return ret;
+
+		case ret_error:
+		case ret_eagain:
+		case ret_ok_and_sent:
+			return ret;
+
+		default:
+			RET_UNKNOWN(ret);
+			return ret;
+		}
 	}
 
 	/* Do a step in the handler

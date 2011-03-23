@@ -66,7 +66,8 @@ typedef struct {
 /* AVL Tree
  */
 typedef struct {
-	cherokee_avl_generic_t base;
+	cherokee_avl_generic_t  base;
+	CHEROKEE_RWLOCK_T      (base_rwlock);
 } cherokee_avl_flcache_t;
 
 

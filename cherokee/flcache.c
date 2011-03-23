@@ -107,20 +107,23 @@ cherokee_flcache_req_get_cached (cherokee_flcache_t    *flcache,
 	/* Is it being stored?
 	 */
 	if (entry->status != flcache_status_ready) {
-		TRACE (ENTRIES, "Front Line Cache: almost-hit; '%s' being cached\n", conn->request.buf);
+		TRACE (ENTRIES, "Front Line Cache: almost-hit; '%s' being cached (%d refs)\n",
+		       conn->request.buf, entry->ref_count);
 		return ret_deny;
 	}
 
 	/* Is it fresh enough?
 	 */
 	if (entry->valid_until < cherokee_bogonow_now) {
-		TRACE (ENTRIES, "Front Line Cache: almost-hit; '%s' expired already\n", conn->request.buf);
+		TRACE (ENTRIES, "Front Line Cache: almost-hit; '%s' expired already (%d refs)\n",
+		       conn->request.buf, entry->ref_count);
 		return ret_deny;
 	}
 
 	/* Cache hit
 	 */
-	TRACE (ENTRIES, "Front Line Cache: hit; '%s' -> '%s'\n", conn->request.buf, entry->file.buf);
+	TRACE (ENTRIES, "Front Line Cache: hit; '%s' -> '%s' (%d refs)\n",
+	       conn->request.buf, entry->file.buf, entry->ref_count);
 
 	/* Open the cached file
 	 */
@@ -370,7 +373,7 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 			 */
 		}
 
-	next:
+	/* next: */
 		*end = chr_end;
 
 		while ((*end == CHR_CR) || (*end == CHR_LF))
@@ -398,7 +401,6 @@ cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn)
 	} while ((written == -1) && (errno == EINTR));
 
 	if (unlikely (written != sizeof(int))) {
-		// TODO: check errno
 		return ret_error;
 	}
 
@@ -445,9 +447,10 @@ ret_t
 cherokee_flcache_conn_send_header (cherokee_flcache_conn_t *flcache_conn,
 				   cherokee_connection_t   *conn)
 {
-	ret_t  ret;
-	size_t got;
-	int    len;
+	ret_t   ret;
+	ssize_t got;
+	int     len;
+	size_t  got2 = 0;
 
 	/* Add cached headers
 	 */
@@ -462,8 +465,7 @@ cherokee_flcache_conn_send_header (cherokee_flcache_conn_t *flcache_conn,
 
 	TRACE (ENTRIES, "Reading header: len %d from fd=%d\n", len, flcache_conn->fd);
 
-	got = 0;
-	ret = cherokee_buffer_read_from_fd (&conn->header_buffer, flcache_conn->fd, len, &got);
+	ret = cherokee_buffer_read_from_fd (&conn->header_buffer, flcache_conn->fd, len, &got2);
 	if (unlikely (ret != ret_ok)) {
 		// TODO: check errno
 		printf ("Error header %d\n", errno);
@@ -484,19 +486,33 @@ ret_t
 cherokee_flcache_conn_send_body (cherokee_flcache_conn_t *flcache_conn,
 				 cherokee_connection_t   *conn)
 {
-	ret_t  ret;
-	size_t got = 0;
+	ret_t              ret;
+	cherokee_boolean_t eof;
+	size_t             got = 0;
 
 	TRACE (ENTRIES, "Reading body from fd=%d\n", flcache_conn->fd);
 
-	ret = cherokee_buffer_read_from_fd (&conn->buffer, flcache_conn->fd, 4096, &got);
+	ret = cherokee_buffer_read_from_fd (&conn->buffer, flcache_conn->fd, DEFAULT_READ_SIZE, &got);
+
+	if (got != 0) {
+		flcache_conn->response_sent += got;
+		eof = (flcache_conn->response_sent >= flcache_conn->avl_node_ref->file_size);
+	}
+
+	if (eof) {
+		return (got)? ret_eof_have_data : ret_eof;
+	}
+
+	if (got) {
+		return ret_eagain;
+	}
+
 	if (ret != ret_ok) {
-//		printf ("errno %d\n", errno);
-		// TODO: check errno
 		return ret;
 	}
 
-	return ret_ok;
+	SHOULDNT_HAPPEN;
+	return ret_error;
 }
 
 

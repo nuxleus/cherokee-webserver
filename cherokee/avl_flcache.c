@@ -61,46 +61,45 @@ node_new (cherokee_avl_flcache_node_t **node,
 {
 	CHEROKEE_NEW_STRUCT (n, avl_flcache_node);
 
-	conn_to_node (conn, n);
-
-	cherokee_buffer_init (&n->file);
 	INIT_LIST_HEAD (&n->to_del);
+	cherokee_buffer_init (&n->file);
 	CHEROKEE_MUTEX_INIT (&n->ref_count_mutex, CHEROKEE_MUTEX_FAST);
 
 	n->conn_ref    = conn;
-	n->ref_count   = 0;
-
 	n->status      = flcache_status_undef;
+	n->ref_count   = 0;
 	n->file_size   = 0;
 	n->valid_until = TIME_MAX;
+
+	conn_to_node (conn, n);
 
 	*node = n;
 	return ret_ok;
 }
 
 static ret_t
-node_mrproper (cherokee_avl_flcache_node_t *key)
+node_mrproper (cherokee_avl_flcache_node_t *node)
 {
-	CHEROKEE_MUTEX_DESTROY (&key->ref_count_mutex);
+	CHEROKEE_MUTEX_DESTROY (&node->ref_count_mutex);
 
-	cherokee_buffer_mrproper (&key->request);
-	cherokee_buffer_mrproper (&key->query_string);
-	cherokee_buffer_mrproper (&key->file);
+	cherokee_buffer_mrproper (&node->request);
+	cherokee_buffer_mrproper (&node->query_string);
+	cherokee_buffer_mrproper (&node->file);
 
 	return ret_ok;
 }
 
 static ret_t
-node_free (cherokee_avl_flcache_node_t *key)
+node_free (cherokee_avl_flcache_node_t *node)
 {
-	ret_t ret;
-
-	if (key == NULL)
+	if (node == NULL) {
 		return ret_ok;
+	}
 
-	ret = node_mrproper (key);
-	free (key);
-	return ret;
+	node_mrproper (node);
+	free (node);
+
+	return ret_ok;
 }
 
 static int
@@ -301,6 +300,7 @@ cherokee_avl_flcache_init (cherokee_avl_flcache_t *avl)
 	cherokee_avl_generic_t *gen = AVL_GENERIC(avl);
 
 	cherokee_avl_generic_init (gen);
+	CHEROKEE_RWLOCK_INIT (&avl->base_rwlock, NULL);
 
 	gen->node_mrproper = (avl_gen_node_mrproper_t) node_mrproper;
 	gen->node_cmp      = (avl_gen_node_cmp_t) node_cmp;
@@ -314,6 +314,7 @@ ret_t
 cherokee_avl_flcache_mrproper (cherokee_avl_flcache_t *avl,
 			       cherokee_func_free_t    free_value)
 {
+	CHEROKEE_RWLOCK_DESTROY (&avl->base_rwlock);
 	cherokee_avl_mrproper (AVL_GENERIC(avl), free_value);
 	return ret_ok;
 }
@@ -333,11 +334,17 @@ cherokee_avl_flcache_add (cherokee_avl_flcache_t       *avl,
 		return ret;
 	}
 
-	if (node != NULL) {
-		*node = n;
+	CHEROKEE_RWLOCK_WRITER (&avl->base_rwlock);
+	ret = cherokee_avl_generic_add (AVL_GENERIC(avl), AVL_GENERIC_NODE(n), n);
+	CHEROKEE_RWLOCK_UNLOCK (&avl->base_rwlock);
+
+	if (ret != ret_ok) {
+		/* n was already freed by add() */
+		return ret;
 	}
 
-	return cherokee_avl_generic_add (AVL_GENERIC(avl), AVL_GENERIC_NODE(n), n);
+	*node = n;
+	return ret;
 }
 
 
@@ -346,11 +353,16 @@ cherokee_avl_flcache_get (cherokee_avl_flcache_t       *avl,
 			  cherokee_connection_t        *conn,
 			  cherokee_avl_flcache_node_t **node)
 {
+	ret_t                       ret;
 	cherokee_avl_flcache_node_t tmp;
 
 	tmp.conn_ref = conn;
 
-	return cherokee_avl_generic_get (AVL_GENERIC(avl), AVL_GENERIC_NODE(&tmp), (void **)node);
+	CHEROKEE_RWLOCK_READER (&avl->base_rwlock);
+	ret = cherokee_avl_generic_get (AVL_GENERIC(avl), AVL_GENERIC_NODE(&tmp), (void **)node);
+	CHEROKEE_RWLOCK_UNLOCK (&avl->base_rwlock);
+
+	return ret;
 }
 
 
@@ -379,6 +391,8 @@ cherokee_avl_flcache_cleanup (cherokee_avl_flcache_t *avl)
 	cherokee_list_t *i, *j;
 	cherokee_list_t  to_delete = LIST_HEAD_INIT(to_delete);
 
+	CHEROKEE_RWLOCK_WRITER (&avl->base_rwlock);
+
 	/* Add expired entries to 'to_delete'
 	 */
 	cherokee_avl_generic_while (AVL_GENERIC(avl), cleanup_while_func, &to_delete, NULL, NULL);
@@ -401,6 +415,8 @@ cherokee_avl_flcache_cleanup (cherokee_avl_flcache_t *avl)
 			; // TO DO
 		}
 	}
+
+	CHEROKEE_RWLOCK_UNLOCK (&avl->base_rwlock);
 
 	return ret_ok;
 }

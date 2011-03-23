@@ -42,6 +42,10 @@ conn_to_node (cherokee_connection_t       *conn,
 	cherokee_buffer_init (&node->request);
 	cherokee_buffer_add_buffer (&node->request, &conn->request);
 
+	/* Query string */
+	cherokee_buffer_init (&node->query_string);
+	cherokee_buffer_add_buffer (&node->query_string, &conn->query_string);
+
 	/* Encoder:
 	 * It will be filled in when the encoder object is instanced
 	 */
@@ -76,6 +80,7 @@ static ret_t
 node_mrproper (cherokee_avl_flcache_node_t *key)
 {
 	cherokee_buffer_mrproper (&key->request);
+	cherokee_buffer_mrproper (&key->query_string);
 	cherokee_buffer_mrproper (&key->file);
 
 	return ret_ok;
@@ -123,6 +128,37 @@ cmp_request (cherokee_avl_flcache_node_t *A,
 	/* Comparing two nodes
 	 */
 	return cherokee_buffer_case_cmp_buf (&A->request, &B->request);
+}
+
+static int
+cmp_query_string (cherokee_avl_flcache_node_t *A,
+		  cherokee_avl_flcache_node_t *B)
+{
+	int                          re;
+	cherokee_connection_t       *conn;
+	cherokee_avl_flcache_node_t *node;
+	cherokee_boolean_t           invert;
+
+	/* Comparing against a cherokee_connection_t
+	 */
+	if (A->conn_ref || B->conn_ref) {
+		if (A->conn_ref) {
+			conn   = A->conn_ref;
+			node   = B;
+			invert = false;
+		} else {
+			conn = B->conn_ref;
+			node = A;
+			invert = true;
+		}
+
+		re = cherokee_buffer_case_cmp_buf (&conn->query_string, &node->query_string);
+		return (invert) ? -re : re;
+	}
+
+	/* Comparing two nodes
+	 */
+	return cherokee_buffer_case_cmp_buf (&A->query_string, &B->query_string);
 }
 
 static int
@@ -231,7 +267,14 @@ node_cmp (cherokee_avl_flcache_node_t *A,
 		return re;
 	}
 
-	/* 2.- Encoding
+	/* 2.- Query String
+	 */
+	re = cmp_query_string (A, B);
+	if (re != 0) {
+		return re;
+	}
+
+	/* 3.- Encoding
 	 */
 	re = cmp_encoding (A, B);
 	if (re != 0) {

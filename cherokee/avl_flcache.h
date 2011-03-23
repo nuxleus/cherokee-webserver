@@ -50,6 +50,7 @@ typedef struct {
 	cherokee_list_t              to_del;
 
 	cherokee_buffer_t            request;
+	cherokee_buffer_t            query_string;
 	cherokee_buffer_t            content_encoding;
 
 	cherokee_connection_t       *conn_ref;

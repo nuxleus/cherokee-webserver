@@ -393,6 +393,7 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 			node->valid_until = 0;
 			cherokee_dtm_str2time (value, end - value, &node->valid_until);
 		}
+
 		/* Cache-Control
 		 */
 		else if (strncasecmp (begin, "Cache-Control:", 14) == 0) {
@@ -407,8 +408,10 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 			{
 				node->valid_until = 0;
 			}
-		}
 
+			/* TODO: max-age= and s-maxage=
+			 */
+		}
 
 	next:
 		*end = chr_end;
@@ -430,15 +433,6 @@ cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn)
 	/* Inspect header
 	 */
 	inspect_header (flcache_conn, &flcache_conn->header);
-
-	/* Filter header
-	cherokee_buffer_ensure_size (&header_filtered, header_in->len + 1);
-
-	ret = filter_header_to_store (header_in, &header_filtered);
-	if (unlikely (ret != ret_ok)) {
-		return ret_error;
-	}
-	 */
 
 	/* Write length
 	 */

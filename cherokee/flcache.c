@@ -131,7 +131,9 @@ cherokee_flcache_req_get_cached (cherokee_flcache_t    *flcache,
 
 	/* Store the reference to the object
 	 */
+	CHEROKEE_MUTEX_LOCK (&entry->ref_count_mutex);
 	entry->ref_count += 1;
+	CHEROKEE_MUTEX_UNLOCK (&entry->ref_count_mutex);
 
 	conn->flcache.avl_node_ref = entry;
 	conn->flcache.mode         = flcache_mode_out;
@@ -211,16 +213,20 @@ cherokee_flcache_conn_init (cherokee_flcache_conn_t *flcache_conn)
 ret_t
 cherokee_flcache_conn_clean (cherokee_flcache_conn_t *flcache_conn)
 {
-	if (flcache_conn->avl_node_ref != NULL) {
+	cherokee_avl_flcache_node_t *entry = flcache_conn->avl_node_ref;
+
+	if (entry != NULL) {
 		/* The storage has finished
 		 */
-		if (flcache_conn->avl_node_ref->status == flcache_status_storing) {
-			flcache_conn->avl_node_ref->status = flcache_status_ready;
+		if (entry->status == flcache_status_storing) {
+			entry->status = flcache_status_ready;
 		}
 
 		/* Reference countring
 		 */
-		flcache_conn->avl_node_ref->ref_count -= 1;
+		CHEROKEE_MUTEX_LOCK (&entry->ref_count_mutex);
+		entry->ref_count -= 1;
+		CHEROKEE_MUTEX_UNLOCK (&entry->ref_count_mutex);
 
 		flcache_conn->avl_node_ref = NULL;
 	}
@@ -260,8 +266,11 @@ cherokee_flcache_req_set_store (cherokee_flcache_t    *flcache,
 
 	/* Set mode, ref count
 	 */
+	CHEROKEE_MUTEX_LOCK (&entry->ref_count_mutex);
 	entry->ref_count += 1;
-	entry->status     = flcache_status_storing;
+	CHEROKEE_MUTEX_UNLOCK (&entry->ref_count_mutex);
+
+	entry->status = flcache_status_storing;
 
 	/* Filename
 	 */

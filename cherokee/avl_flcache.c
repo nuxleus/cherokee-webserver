@@ -62,8 +62,10 @@ node_new (cherokee_avl_flcache_node_t **node,
 	CHEROKEE_NEW_STRUCT (n, avl_flcache_node);
 
 	conn_to_node (conn, n);
+
 	cherokee_buffer_init (&n->file);
 	INIT_LIST_HEAD (&n->to_del);
+	CHEROKEE_MUTEX_INIT (&n->ref_count_mutex, CHEROKEE_MUTEX_FAST);
 
 	n->conn_ref    = conn;
 	n->ref_count   = 0;
@@ -79,6 +81,8 @@ node_new (cherokee_avl_flcache_node_t **node,
 static ret_t
 node_mrproper (cherokee_avl_flcache_node_t *key)
 {
+	CHEROKEE_MUTEX_DESTROY (&key->ref_count_mutex);
+
 	cherokee_buffer_mrproper (&key->request);
 	cherokee_buffer_mrproper (&key->query_string);
 	cherokee_buffer_mrproper (&key->file);

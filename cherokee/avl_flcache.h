@@ -45,9 +45,10 @@ typedef enum {
  */
 typedef struct {
 	cherokee_avl_generic_node_t  base;
+	cherokee_list_t              to_del;
 
 	cint_t                       ref_count;
-	cherokee_list_t              to_del;
+	CHEROKEE_MUTEX_T            (ref_count_mutex);
 
 	cherokee_buffer_t            request;
 	cherokee_buffer_t            query_string;

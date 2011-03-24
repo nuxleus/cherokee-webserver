@@ -63,6 +63,7 @@ cherokee_virtual_server_new (cherokee_virtual_server_t **vserver, void *server)
 	n->matching        = NULL;
 	n->collector       = NULL;
 	n->match_nick      = true;
+	n->flcache         = NULL;
 
 	/* Virtual entries
 	 */
@@ -1047,7 +1048,6 @@ cherokee_virtual_server_configure (cherokee_virtual_server_t *vserver,
 {
 	ret_t                   ret;
 	cherokee_list_t        *i;
-	cherokee_boolean_t      active       = false;
 	cherokee_config_node_t *subconf      = NULL;
 	cherokee_boolean_t      uses_flcache = false;
 

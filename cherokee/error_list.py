@@ -1336,3 +1336,10 @@ e('SSL_PKCS11',
 e('SSL_DEFAULTS',
   title = "Could not set all defaults",
   desc  = SYSTEM_ISSUE)
+
+# Front-line cache
+#
+e('FLCACHE_MKDIR',
+  title = "Could not create the '%s' directory, or it doesn't have %s permissions",
+  desc  = SYSTEM_ISSUE)
+

@@ -81,6 +81,7 @@ cherokee_flcache_configure (cherokee_flcache_t     *flcache,
 
 	ret = cherokee_mkdir_p_perm (&flcache->local_directory, 0700, W_OK);
 	if (ret != ret_ok) {
+		LOG_CRITICAL (CHEROKEE_ERROR_FLCACHE_MKDIR, flcache->local_directory.buf, "write");
 		return ret;
 	}
 
@@ -300,6 +301,7 @@ cherokee_flcache_req_set_store (cherokee_flcache_t    *flcache,
 
 		ret = cherokee_mkdir_p_perm (&tmp, 0700, W_OK);
 		if (ret != ret_ok) {
+			LOG_CRITICAL (CHEROKEE_ERROR_FLCACHE_MKDIR, tmp.buf, "write");
 			return ret_error;
 		}
 

@@ -479,6 +479,17 @@ cherokee_flcache_conn_send_header (cherokee_flcache_conn_t *flcache_conn,
 	cherokee_buffer_add_ullong10 (&conn->header_buffer, flcache_conn->avl_node_ref->file_size);
 	cherokee_buffer_add_str      (&conn->header_buffer, CRLF);
 
+	/* X-Cache
+	 */
+	cherokee_buffer_add_str    (&conn->header_buffer, "X-Cache: HIT from ");
+	cherokee_buffer_add_buffer (&conn->header_buffer, &conn->host);
+
+	if (! http_port_is_standard (conn->bind->port, conn->socket.is_tls)) {
+		cherokee_buffer_add_char    (&conn->header_buffer, ':');
+		cherokee_buffer_add_ulong10 (&conn->header_buffer, conn->bind->port);
+	}
+
+	cherokee_buffer_add_str (&conn->header_buffer, CRLF);
 	return ret_ok;
 }
 

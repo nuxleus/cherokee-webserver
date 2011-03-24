@@ -899,6 +899,18 @@ cherokee_connection_build_header (cherokee_connection_t *conn)
 	 */
 	if (conn->flcache.mode == flcache_mode_in) {
 		cherokee_buffer_add_buffer (&conn->flcache.header, &conn->header_buffer);
+
+		/* Add X-Cache miss
+		 */
+		cherokee_buffer_add_str    (&conn->header_buffer, "X-Cache: MISS from ");
+		cherokee_buffer_add_buffer (&conn->header_buffer, &conn->host);
+
+		if (! http_port_is_standard (conn->bind->port, conn->socket.is_tls)) {
+			cherokee_buffer_add_char    (&conn->header_buffer, ':');
+			cherokee_buffer_add_ulong10 (&conn->header_buffer, conn->bind->port);
+		}
+
+		cherokee_buffer_add_str (&conn->header_buffer, CRLF);
 	}
 
 	/* Replies with no body cannot use chunked encoding

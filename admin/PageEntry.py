@@ -48,6 +48,7 @@ NOTE_VALIDATOR       = N_('Which, if any, will be the authentication method.')
 NOTE_EXPIRATION      = N_('Points how long the files should be cached')
 NOTE_RATE            = N_("Set an outbound traffic limit. It must be specified in Bytes per second.")
 NOTE_NO_LOG          = N_("Do not log requests matching this rule.")
+NOTE_FLCACHE         = N_("Allow the server to act as a cache the responses from this rule.")
 NOTE_EXPIRATION_TIME = N_("""How long from the object can be cached.<br />
 The <b>m</b>, <b>h</b>, <b>d</b> and <b>w</b> suffixes are allowed for minutes, hours, days, and weeks. Eg: 2d.
 """)
@@ -281,6 +282,15 @@ class TimeWidget (CTK.Container):
         submit += table
 
         self += CTK.RawHTML ("<h2>%s</h2>" % (_('Connections Timeout')))
+        self += CTK.Indenter (submit)
+
+        # Front-line cache
+        table = CTK.PropsTable()
+        table.Add (_('Allow Caching'),CTK.CheckCfgText('%s!flcache'%(pre), False), _(NOTE_FLCACHE))
+        submit = CTK.Submitter (apply)
+        submit += table
+
+        self += CTK.RawHTML ("<h2>%s</h2>" % (_('Cache')))
         self += CTK.Indenter (submit)
 
         # Expiration

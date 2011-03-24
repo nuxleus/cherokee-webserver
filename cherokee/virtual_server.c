@@ -1046,8 +1046,10 @@ cherokee_virtual_server_configure (cherokee_virtual_server_t *vserver,
 				   cherokee_config_node_t    *config)
 {
 	ret_t                   ret;
-	cherokee_boolean_t      active  = false;
-	cherokee_config_node_t *subconf = NULL;
+	cherokee_list_t        *i;
+	cherokee_boolean_t      active       = false;
+	cherokee_config_node_t *subconf      = NULL;
+	cherokee_boolean_t      uses_flcache = false;
 
 	/* Set the priority
 	 */
@@ -1082,20 +1084,28 @@ cherokee_virtual_server_configure (cherokee_virtual_server_t *vserver,
 	/* Front-line cache:
 	 * Needs 'nick' to be set previously
 	 */
-	ret = cherokee_config_node_get (config, "flcache", &subconf);
-	if ((ret == ret_ok) && atoi(subconf->val.buf))
-	{
+	list_for_each (i, &vserver->rules.rules) {
+		cherokee_rule_t *rule = RULE (list_entry(i, cherokee_rule_t, list_node));
+		if (rule->config.flcache != NULLB_NULL) {
+			uses_flcache = true;
+			break;
+		}
+	}
+
+	if (uses_flcache) {
 		ret = cherokee_flcache_new (&vserver->flcache);
 		if (ret != ret_ok) {
 			return ret;
 		}
 
-		ret = cherokee_flcache_configure (vserver->flcache, subconf, vserver);
-		if (ret != ret_ok) {
-			return ret;
+		ret = cherokee_config_node_get (config, "flcache", &subconf);
+		if (ret == ret_ok) {
+			ret = cherokee_flcache_configure (vserver->flcache, subconf, vserver);
+			if (ret != ret_ok) {
+				return ret;
+			}
 		}
 	}
-
 
 	/* Perform some sanity checks
 	 */

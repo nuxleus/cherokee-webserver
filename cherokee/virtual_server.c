@@ -406,8 +406,15 @@ init_entry_property (cherokee_config_node_t *conf, void *data)
 		entry->only_secure = !! atoi(conf->val.buf);
 
 	} else if (equal_buf_str (&conf->key, "flcache")) {
-		if (equal_buf_str (&conf->val, "1")) {
+		if ((equal_buf_str (&conf->val, "allow")) ||
+		    (equal_buf_str (&conf->val, "1")))
+		{
 			entry->flcache = true;
+		}
+		else if ((equal_buf_str (&conf->val, "forbid")) ||
+			 (equal_buf_str (&conf->val, "0")))
+		{
+			entry->flcache = false;
 		}
 
 	} else if (equal_buf_str (&conf->key, "expiration")) {
@@ -1086,7 +1093,7 @@ cherokee_virtual_server_configure (cherokee_virtual_server_t *vserver,
 	 */
 	list_for_each (i, &vserver->rules.rules) {
 		cherokee_rule_t *rule = RULE (list_entry(i, cherokee_rule_t, list_node));
-		if (rule->config.flcache != NULLB_NULL) {
+		if (NULLB_TO_BOOL (rule->config.flcache)) {
 			uses_flcache = true;
 			break;
 		}

@@ -81,6 +81,12 @@ ENCODE_OPTIONS = [
     ('forbid', N_('Forbid'))
 ]
 
+FLCACHE_OPTIONS = [
+    ('',       N_('Leave unset')),
+    ('allow',  N_('Allow Caching')),
+    ('forbid', N_('Forbid Caching'))
+]
+
 HEADER_OP_OPTIONS = [
     ('add', N_('Add')),
     ('del', N_('Remove'))
@@ -285,8 +291,10 @@ class TimeWidget (CTK.Container):
         self += CTK.Indenter (submit)
 
         # Front-line cache
+        combo = CTK.ComboCfg ('%s!flcache'%(pre), trans_options(FLCACHE_OPTIONS))
+
         table = CTK.PropsTable()
-        table.Add (_('Allow Caching'),CTK.CheckCfgText('%s!flcache'%(pre), False), _(NOTE_FLCACHE))
+        table.Add (_('Content Caching'), combo, _(NOTE_FLCACHE))
         submit = CTK.Submitter (apply)
         submit += table
 

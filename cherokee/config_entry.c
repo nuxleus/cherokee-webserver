@@ -232,11 +232,11 @@ cherokee_config_entry_complete (cherokee_config_entry_t *entry,
 	if (! entry->limit_bps)
 		entry->limit_bps = source->limit_bps;
 
-	if (entry->no_log == NULLB_NULL) {
+	if (NULLB_IS_NULL (entry->no_log)) {
 		entry->no_log = source->no_log;
 	}
 
-	if (entry->flcache == NULLB_NULL) {
+	if (NULLB_IS_NULL (entry->flcache)) {
 		entry->flcache = source->flcache;
 	}
 

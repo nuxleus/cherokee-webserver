@@ -425,10 +425,14 @@ class BehaviorWidget (CTK.Container):
             tmp   = _('Prevents further rule evaluation')
             final = CTK.ImageStock('tick', {'alt': tmp, 'title': tmp})
 
-        tmp = bool (int (CTK.cfg.get_val('vserver!%s!rule!%s!flcache'%(vsrv_num,r), "0")))
-        if tmp:
-            tmp   = _('Responses can be cached')
+        tmp = CTK.cfg.get_val('vserver!%s!rule!%s!flcache'%(vsrv_num,r))
+        if tmp in ('allow', '1'):
+            tmp     = _('Content can be cached')
             flcache = CTK.ImageStock('tick', {'alt': tmp, 'title': tmp})
+        elif tmp in ('forbid', '0'):
+            tmp     = _('Forbids content caching')
+            flcache = CTK.ImageStock ('forbid', {'alt': tmp, 'title': tmp})
+
 
         tmp = not bool (int (CTK.cfg.get_val('vserver!%s!rule!%s!disabled'%(vsrv_num,r), "0")))
         if tmp:

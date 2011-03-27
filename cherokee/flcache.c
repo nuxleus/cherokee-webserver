@@ -118,6 +118,11 @@ cherokee_flcache_req_get_cached (cherokee_flcache_t    *flcache,
 	if (entry->valid_until < cherokee_bogonow_now) {
 		TRACE (ENTRIES, "Front Line Cache: almost-hit; '%s' expired already (%d refs)\n",
 		       conn->request.buf, entry->ref_count);
+
+		if (entry->ref_count == 0) {
+			cherokee_flcache_del_entry (flcache, entry);
+		}
+
 		return ret_deny;
 	}
 
@@ -209,42 +214,6 @@ cherokee_flcache_conn_init (cherokee_flcache_conn_t *flcache_conn)
 	flcache_conn->fd            = -1;
 
 	cherokee_buffer_init (&flcache_conn->header);
-
-	return ret_ok;
-}
-
-
-ret_t
-cherokee_flcache_conn_clean (cherokee_flcache_conn_t *flcache_conn)
-{
-	cherokee_avl_flcache_node_t *entry = flcache_conn->avl_node_ref;
-
-	if (entry != NULL) {
-		/* The storage has finished
-		 */
-		if (entry->status == flcache_status_storing) {
-			entry->status = flcache_status_ready;
-		}
-
-		/* Reference countring
-		 */
-		CHEROKEE_MUTEX_LOCK (&entry->ref_count_mutex);
-		entry->ref_count -= 1;
-		CHEROKEE_MUTEX_UNLOCK (&entry->ref_count_mutex);
-
-		flcache_conn->avl_node_ref = NULL;
-	}
-
-	flcache_conn->header_sent   = 0;
-	flcache_conn->response_sent = 0;
-	flcache_conn->mode          = flcache_mdoe_undef;
-
-	if (flcache_conn->fd != -1) {
-		cherokee_fd_close (flcache_conn->fd);
-		flcache_conn->fd = -1;
-	}
-
-	cherokee_buffer_mrproper (&flcache_conn->header);
 
 	return ret_ok;
 }
@@ -539,6 +508,58 @@ cherokee_flcache_cleanup (cherokee_flcache_t *flcache)
 	if (unlikely (ret != ret_ok)) {
 		return ret_error;
 	}
+
+	return ret_ok;
+}
+
+
+ret_t
+cherokee_flcache_del_entry (cherokee_flcache_t          *flcache,
+			    cherokee_avl_flcache_node_t *entry)
+{
+	ret_t ret;
+
+	ret = cherokee_avl_flcache_del (&flcache->request_map, entry);
+	TRACE (ENTRIES, "Removing expired Front-line cache entry - ret=%d\n", ret);
+
+	return ret;
+}
+
+
+ret_t
+cherokee_flcache_conn_clean (cherokee_flcache_conn_t *flcache_conn)
+{
+	cherokee_avl_flcache_node_t *entry = flcache_conn->avl_node_ref;
+
+	/* Unreference entry
+	 */
+	if (entry != NULL) {
+
+		/* The storage has finished */
+		if (entry->status == flcache_status_storing) {
+			entry->status = flcache_status_ready;
+		}
+
+		/* Reference countring */
+		CHEROKEE_MUTEX_LOCK (&entry->ref_count_mutex);
+		entry->ref_count -= 1;
+		CHEROKEE_MUTEX_UNLOCK (&entry->ref_count_mutex);
+
+		flcache_conn->avl_node_ref = NULL;
+	}
+
+	/* Front-line connection: clean up
+	 */
+	flcache_conn->header_sent   = 0;
+	flcache_conn->response_sent = 0;
+	flcache_conn->mode          = flcache_mdoe_undef;
+
+	if (flcache_conn->fd != -1) {
+		cherokee_fd_close (flcache_conn->fd);
+		flcache_conn->fd = -1;
+	}
+
+	cherokee_buffer_mrproper (&flcache_conn->header);
 
 	return ret_ok;
 }

@@ -80,6 +80,7 @@ ret_t cherokee_flcache_cleanup         (cherokee_flcache_t *flcache);
 ret_t cherokee_flcache_req_get_cached  (cherokee_flcache_t *flcache, cherokee_connection_t *conn);
 ret_t cherokee_flcache_req_is_storable (cherokee_flcache_t *flcache, cherokee_connection_t *conn);
 ret_t cherokee_flcache_req_set_store   (cherokee_flcache_t *flcache, cherokee_connection_t *conn);
+ret_t cherokee_flcache_del_entry       (cherokee_flcache_t *flcache, cherokee_avl_flcache_node_t *entry);
 
 /* Front-line cache connection
  */

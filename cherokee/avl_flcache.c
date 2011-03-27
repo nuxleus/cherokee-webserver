@@ -420,3 +420,19 @@ cherokee_avl_flcache_cleanup (cherokee_avl_flcache_t *avl)
 
 	return ret_ok;
 }
+
+
+ret_t
+cherokee_avl_flcache_del (cherokee_avl_flcache_t      *avl,
+			  cherokee_avl_flcache_node_t *node)
+{
+	ret_t ret = ret_ok;
+
+	CHEROKEE_RWLOCK_WRITER (&avl->base_rwlock);
+	if (node->ref_count == 0) {
+		ret = cherokee_avl_generic_del (AVL_GENERIC(avl), AVL_GENERIC_NODE(node), NULL);
+	}
+	CHEROKEE_RWLOCK_UNLOCK (&avl->base_rwlock);
+
+	return ret;
+}

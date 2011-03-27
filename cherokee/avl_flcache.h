@@ -87,6 +87,9 @@ ret_t cherokee_avl_flcache_get      (cherokee_avl_flcache_t       *avl,
 				     cherokee_connection_t        *conn,
 				     cherokee_avl_flcache_node_t **node);
 
+ret_t cherokee_avl_flcache_del      (cherokee_avl_flcache_t       *avl,
+				     cherokee_avl_flcache_node_t  *node);
+
 CHEROKEE_END_DECLS
 
 #endif /* CHEROKEE_FLCACHE_AVL_H */

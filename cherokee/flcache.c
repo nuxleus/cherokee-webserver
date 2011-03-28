@@ -321,6 +321,20 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 			cherokee_dtm_str2time (value, end - value, &node->valid_until);
 		}
 
+		/* Content-length
+		 */
+		else if (strncasecmp (begin, "Content-Length:", 15) == 0) {
+			*end = chr_end;
+
+			while ((*end == CHR_CR) || (*end == CHR_LF))
+				end++;
+
+			cherokee_buffer_remove_chunk (header, begin - header->buf, end - begin);
+
+			end = begin;
+			continue;
+		}
+
 		/* Cache-Control
 		 */
 		else if (strncasecmp (begin, "Cache-Control:", 14) == 0) {

@@ -71,46 +71,50 @@ typedef enum {
 typedef struct {
 	/* Properties
 	 */
-	cherokee_buffer_t          *document_root;
-	cherokee_boolean_t          only_secure;
-	cherokee_null_bool_t        no_log;
-	void                       *access;
-	cherokee_list_t            *header_ops;
+	cherokee_buffer_t           *document_root;
+	cherokee_boolean_t           only_secure;
+	cherokee_null_bool_t         no_log;
+	void                        *access;
+	cherokee_list_t             *header_ops;
 
 	/* Handler
 	 */
-	handler_func_new_t          handler_new_func;
-	cherokee_http_method_t      handler_methods;
-	cherokee_module_props_t    *handler_properties;
+	handler_func_new_t           handler_new_func;
+	cherokee_http_method_t       handler_methods;
+	cherokee_module_props_t     *handler_properties;
 
 	/* Validator
 	 */
-	validator_func_new_t        validator_new_func;
-	cherokee_module_props_t    *validator_properties;
+	validator_func_new_t         validator_new_func;
+	cherokee_module_props_t     *validator_properties;
 
-	cherokee_buffer_t          *auth_realm;
-	cherokee_http_auth_t        authentication;
-	cherokee_avl_t             *users;
+	cherokee_buffer_t           *auth_realm;
+	cherokee_http_auth_t         authentication;
+	cherokee_avl_t              *users;
 
 	/* Expiration / Cache
 	 */
-	cherokee_expiration_t       expiration;
-	time_t                      expiration_time;
-	cherokee_expiration_props_t expiration_prop;
-	cherokee_null_bool_t        flcache;
+	cherokee_expiration_t        expiration;
+	time_t                       expiration_time;
+	cherokee_expiration_props_t  expiration_prop;
+
+	/* Front-line cache
+	 */
+	cherokee_null_bool_t         flcache;
+	cherokee_list_t             *flcache_cookies_disregard;
 
 	/* Encoding
 	 */
-	cherokee_avl_t             *encoders;
+	cherokee_avl_t              *encoders;
 
 	/* Traffic shaping
 	 */
-	cuint_t                     limit_bps;
+	cuint_t                      limit_bps;
 
 	/* Timeout
 	 */
-	cherokee_null_int_t         timeout_lapse;
-	cherokee_buffer_t          *timeout_header;
+	cherokee_null_int_t          timeout_lapse;
+	cherokee_buffer_t           *timeout_header;
 } cherokee_config_entry_t;
 
 #define CONF_ENTRY(x) ((cherokee_config_entry_t *)(x))

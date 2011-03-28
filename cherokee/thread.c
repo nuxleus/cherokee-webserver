@@ -1050,6 +1050,10 @@ process_active_connections (cherokee_thread_t *thd)
 				conn->header_ops = entry.header_ops;
 			}
 
+			if (entry.flcache_cookies_disregard) {
+				conn->flcache_cookies_disregard = entry.flcache_cookies_disregard;
+			}
+
 			/* Create the handler
 			 */
 			ret = cherokee_connection_create_handler (conn, &entry);
@@ -1253,7 +1257,7 @@ process_active_connections (cherokee_thread_t *thd)
 			/* Front-line cache: store
 			 */
 			if (conn->flcache.mode == flcache_mode_in) {
-				ret = cherokee_flcache_conn_commit_header (&conn->flcache);
+				ret = cherokee_flcache_conn_commit_header (&conn->flcache, conn);
 				if (ret != ret_ok) {
 					// TODO: Handler error
 				}

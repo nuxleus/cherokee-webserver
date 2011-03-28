@@ -273,6 +273,51 @@ add_header_op (cherokee_config_entry_t *entry,
 
 
 static ret_t
+add_flcache_cookies_do_cache (cherokee_config_entry_t *entry,
+			      cherokee_config_node_t  *conf,
+			      cherokee_server_t       *srv)
+{
+	ret_t              ret;
+	void              *pcre  = NULL;
+	cherokee_buffer_t *regex = NULL;
+
+	/* Get the property
+	 */
+	ret = cherokee_config_node_read (conf, "regex", &regex);
+	if ((ret != ret_ok) || (regex == NULL)) {
+		return ret_not_found;
+	}
+
+	/* Compile regular expression
+	 */
+	ret = cherokee_regex_table_add (srv->regexs, regex->buf);
+	if (ret != ret_ok) {
+		return ret_error;
+	}
+
+	ret = cherokee_regex_table_get (srv->regexs, regex->buf, &pcre);
+	if ((ret != ret_ok) || (pcre == NULL)) {
+		return ret_error;
+	}
+
+	/* Add it to the list
+	 */
+	if (entry->flcache_cookies_disregard == NULL) {
+		entry->flcache_cookies_disregard = (cherokee_list_t *) malloc (sizeof (cherokee_list_t));
+		if (unlikely (entry->flcache_cookies_disregard == NULL)) {
+			return ret_error;
+		}
+		INIT_LIST_HEAD (entry->flcache_cookies_disregard);
+	}
+
+	TRACE (ENTRIES",flcache", "Flcache adding disregard cookie '%s'\n", regex->buf);
+	cherokee_list_add_tail_content (entry->flcache_cookies_disregard, pcre);
+
+	return ret_ok;
+}
+
+
+static ret_t
 init_entry_property (cherokee_config_node_t *conf, void *data)
 {
 	ret_t                      ret;
@@ -406,6 +451,8 @@ init_entry_property (cherokee_config_node_t *conf, void *data)
 		entry->only_secure = !! atoi(conf->val.buf);
 
 	} else if (equal_buf_str (&conf->key, "flcache")) {
+		/* Enable / Disable
+		 */
 		if ((equal_buf_str (&conf->val, "allow")) ||
 		    (equal_buf_str (&conf->val, "1")))
 		{
@@ -415,6 +462,30 @@ init_entry_property (cherokee_config_node_t *conf, void *data)
 			 (equal_buf_str (&conf->val, "0")))
 		{
 			entry->flcache = false;
+		}
+
+		/* Cookies
+		 */
+		subconf = NULL;
+		ret = cherokee_config_node_get (conf, "cookies", &subconf);
+		if ((ret == ret_ok) && (subconf != NULL)) {
+
+			/*  Cookies to disregard
+			 */
+			subconf2 = NULL;
+			ret = cherokee_config_node_get (subconf, "do_cache", &subconf2);
+			if ((ret == ret_ok) && (subconf2 != NULL)) {
+				cherokee_list_t        *i;
+				cherokee_config_node_t *child;
+
+				cherokee_config_node_foreach (i, subconf2) {
+					child = CONFIG_NODE(i);
+
+					ret = add_flcache_cookies_do_cache (entry, CONFIG_NODE(i), srv);
+					if (ret != ret_ok)
+						return ret;
+				}
+			}
 		}
 
 	} else if (equal_buf_str (&conf->key, "expiration")) {
@@ -1105,12 +1176,12 @@ cherokee_virtual_server_configure (cherokee_virtual_server_t *vserver,
 			return ret;
 		}
 
-		ret = cherokee_config_node_get (config, "flcache", &subconf);
-		if (ret == ret_ok) {
-			ret = cherokee_flcache_configure (vserver->flcache, subconf, vserver);
-			if (ret != ret_ok) {
-				return ret;
-			}
+		subconf = NULL;
+		cherokee_config_node_get (config, "flcache", &subconf);
+
+		ret = cherokee_flcache_configure (vserver->flcache, subconf, vserver);
+		if (ret != ret_ok) {
+			return ret;
 		}
 	}
 

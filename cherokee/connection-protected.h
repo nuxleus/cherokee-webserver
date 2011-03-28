@@ -203,7 +203,11 @@ struct cherokee_connection {
 	void                         *mmaped;
 	off_t                         mmaped_len;
 	cherokee_iocache_entry_t     *io_entry_ref;
+
+	/* Front-line cache
+	 */
 	cherokee_flcache_conn_t       flcache;
+	cherokee_list_t              *flcache_cookies_disregard;
 
 	/* Regular expressions
 	 */

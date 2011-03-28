@@ -329,8 +329,8 @@ class FrontLine_Cache (CTK.Container):
 
         # Enable
         rest     = CTK.Box()
-        combo    = CTK.ComboCfg ('%s!flcache'%(pre), trans_options(FLCACHE_OPTIONS))
-        combo_js = "if ($('#%s').val()){ $('#%s').show(); }else{ $('#%s').hide(); }"%(combo.id, rest.id, rest.id)
+        combo    = CTK.ComboCfg (pre, trans_options(FLCACHE_OPTIONS))
+        combo_js = "if ($('#%s').val() == 'allow'){ $('#%s').show(); }else{ $('#%s').hide(); }"%(combo.id, rest.id, rest.id)
         combo.bind ('change', combo_js)
 
         table = CTK.PropsTable()

@@ -49,33 +49,35 @@ CHEROKEE_ADD_FUNC_FREE (config_entry);
 ret_t
 cherokee_config_entry_init (cherokee_config_entry_t *entry)
 {
-	entry->handler_new_func     = NULL;
-	entry->handler_properties   = NULL;
-	entry->handler_methods      = http_unknown;
+	entry->handler_new_func          = NULL;
+	entry->handler_properties        = NULL;
+	entry->handler_methods           = http_unknown;
 
-	entry->validator_new_func   = NULL;
-	entry->validator_properties = NULL;
-	entry->auth_realm           = NULL;
+	entry->validator_new_func        = NULL;
+	entry->validator_properties      = NULL;
+	entry->auth_realm                = NULL;
 
-	entry->access               = NULL;
-	entry->authentication       = http_auth_nothing;
-	entry->only_secure          = false;
-	entry->header_ops           = NULL;
+	entry->access                    = NULL;
+	entry->authentication            = http_auth_nothing;
+	entry->only_secure               = false;
+	entry->header_ops                = NULL;
 
-	entry->document_root        = NULL;
-	entry->users                = NULL;
+	entry->document_root             = NULL;
+	entry->users                     = NULL;
 
-	entry->expiration           = cherokee_expiration_none;
-	entry->expiration_time      = 0;
-	entry->expiration_prop      = cherokee_expiration_prop_none;
-	entry->flcache              = NULLB_NULL;
+	entry->expiration                = cherokee_expiration_none;
+	entry->expiration_time           = 0;
+	entry->expiration_prop           = cherokee_expiration_prop_none;
 
-	entry->encoders             = NULL;
-	entry->limit_bps            = 0;
-	entry->no_log               = NULLB_NULL;
+	entry->flcache                   = NULLB_NULL;
+	entry->flcache_cookies_disregard = NULL;
 
-	entry->timeout_lapse        = NULLI_NULL;
-	entry->timeout_header       = NULL;
+	entry->encoders                  = NULL;
+	entry->limit_bps                 = 0;
+	entry->no_log                    = NULLB_NULL;
+
+	entry->timeout_lapse             = NULLI_NULL;
+	entry->timeout_header            = NULL;
 
 	return ret_ok;
 }
@@ -129,6 +131,16 @@ cherokee_config_entry_mrproper (cherokee_config_entry_t *entry)
 
 		free (entry->header_ops);
 		entry->header_ops = NULL;
+	}
+
+	if (entry->flcache_cookies_disregard != NULL) {
+		list_for_each_safe (i, tmp, entry->flcache_cookies_disregard) {
+			cherokee_list_del (i);
+			free (i);
+		}
+
+		free (entry->flcache_cookies_disregard);
+		entry->flcache_cookies_disregard = NULL;
 	}
 
 	return ret_ok;
@@ -238,6 +250,10 @@ cherokee_config_entry_complete (cherokee_config_entry_t *entry,
 
 	if (NULLB_IS_NULL (entry->flcache)) {
 		entry->flcache = source->flcache;
+	}
+
+	if ((! entry->flcache_cookies_disregard) && (source->flcache_cookies_disregard)) {
+		entry->flcache_cookies_disregard = source->flcache_cookies_disregard;
 	}
 
 	if (NULLI_IS_NULL(entry->timeout_lapse) && (source->timeout_lapse != NULLI_NULL))

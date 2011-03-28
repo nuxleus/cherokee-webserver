@@ -132,6 +132,7 @@ cherokee_connection_new  (cherokee_connection_t **conn)
 	n->limit_bps            = 0;
 	n->limit_blocked_until  = 0;
 	n->header_ops           = NULL;
+	n->flcache_cookies_disregard = NULL;
 
 	cherokee_buffer_init (&n->buffer);
 	cherokee_buffer_init (&n->header_buffer);
@@ -305,6 +306,7 @@ cherokee_connection_clean (cherokee_connection_t *conn)
 	conn->limit_bps            = 0;
 	conn->limit_blocked_until  = 0;
 	conn->header_ops           = NULL;
+	conn->flcache_cookies_disregard = NULL;
 
 	memset (conn->regex_ovector, 0, OVECTOR_LEN * sizeof(int));
 	conn->regex_ovecsize = 0;

@@ -74,6 +74,7 @@ cherokee_flcache_configure (cherokee_flcache_t     *flcache,
 	ret_t                      ret;
 	cherokee_virtual_server_t *vserver = vsrv;
 
+	/* Beware: conf might be NULL */
 	UNUSED(conf);
 
 	cherokee_buffer_add_str    (&flcache->local_directory, CHEROKEE_FLCACHE "/");
@@ -190,12 +191,6 @@ cherokee_flcache_req_is_storable (cherokee_flcache_t    *flcache,
 	if ((conn->range_end != -1) || (conn->range_start != -1))
 		return ret_deny;
 
-	/* Cookies
-	 */
-	ret = cherokee_header_has_known (&conn->header, header_cookie);
-	if (ret == ret_ok)
-		return ret_deny;
-
 	return ret_ok;
 }
 
@@ -295,7 +290,8 @@ cherokee_flcache_req_set_store (cherokee_flcache_t    *flcache,
 
 static void
 inspect_header (cherokee_flcache_conn_t *flcache_conn,
-		cherokee_buffer_t       *header)
+		cherokee_buffer_t       *header,
+		cherokee_connection_t   *conn)
 {
 	char                        *value;
 	char                        *begin;
@@ -344,6 +340,26 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 			 */
 		}
 
+		/* Set-cookie
+		 */
+		else if (strncasecmp (begin, "Set-cookie:", 11) == 0) {
+			if (conn->flcache_cookies_disregard) {
+				int              re;
+				void            *pcre;
+				cherokee_list_t *i;
+
+				list_for_each (i, conn->flcache_cookies_disregard) {
+					pcre = LIST_ITEM_INFO(i);
+
+					re = pcre_exec (pcre, NULL, begin, end-begin, 0, 0, NULL, 0);
+					if (re < 0) {
+						/* No match -> Invalidate */
+						node->valid_until = 0;
+					}
+				}
+			}
+		}
+
 	/* next: */
 		*end = chr_end;
 
@@ -355,7 +371,8 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 
 
 ret_t
-cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn)
+cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn,
+				     cherokee_connection_t   *conn)
 {
 	ssize_t written;
 
@@ -363,7 +380,7 @@ cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn)
 
 	/* Inspect header
 	 */
-	inspect_header (flcache_conn, &flcache_conn->header);
+	inspect_header (flcache_conn, &flcache_conn->header, conn);
 
 	/* Write length
 	 */

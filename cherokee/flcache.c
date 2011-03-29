@@ -220,8 +220,6 @@ cherokee_flcache_req_set_store (cherokee_flcache_t    *flcache,
 	int                          dir;
 	int                          file;
 	cherokee_avl_flcache_node_t *entry = NULL;
-	cherokee_buffer_t            tmp   = CHEROKEE_BUF_INIT;
-
 
 	/* Add it to the tree
 	 */
@@ -251,34 +249,8 @@ cherokee_flcache_req_set_store (cherokee_flcache_t    *flcache,
 	cherokee_buffer_add_str    (&entry->file, "/");
 	cherokee_buffer_add_long10 (&entry->file, file);
 
-	/* Open file
+	/* Status
 	 */
-	conn->flcache.fd = cherokee_open (entry->file.buf, O_WRONLY | O_CREAT | O_NOFOLLOW, S_IRUSR|S_IWUSR);
-	if (conn->flcache.fd == -1) {
-		/* Try to create 'dir'
-		 */
-		cherokee_buffer_add_buffer (&tmp, &flcache->local_directory);
-		cherokee_buffer_add_str    (&tmp, "/");
-		cherokee_buffer_add_long10 (&tmp, dir);
-
-		ret = cherokee_mkdir_p_perm (&tmp, 0700, W_OK);
-		if (ret != ret_ok) {
-			LOG_CRITICAL (CHEROKEE_ERROR_FLCACHE_MKDIR, tmp.buf, "write");
-			return ret_error;
-		}
-
-		TRACE (ENTRIES, "Created directory %s\n", flcache->local_directory.buf);
-
-		/* Second chance
-		 */
-		conn->flcache.fd = cherokee_open (entry->file.buf, O_WRONLY | O_CREAT | O_NOFOLLOW, S_IRUSR|S_IWUSR);
-		if (conn->flcache.fd == -1) {
-			return ret_error;
-		}
-	}
-
-	TRACE (ENTRIES, "Created flcache file %s\n", entry->file.buf);
-
 	conn->flcache.mode         = flcache_mode_in;
 	conn->flcache.avl_node_ref = entry;
 
@@ -346,7 +318,6 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 			    strcasestr (begin, "proxy-revalidate"))
 			{
 				return ret_deny;
-				// node->valid_until = 0;
 			}
 
 			/* TODO: max-age= and s-maxage=
@@ -373,13 +344,10 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 				}
 				if (! matched) {
 					return ret_deny;
-					/* No match -> Invalidate */
-//					node->valid_until = 0;
 
 				}
 			} else {
 				return ret_deny;
-//				node->valid_until = 0;
 			}
 		}
 
@@ -394,6 +362,51 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 	return ret_ok;
 }
 
+
+static ret_t
+open_flconn_file (cherokee_flcache_t    *flcache,
+		  cherokee_connection_t *conn)
+{
+	ret_t                        ret;
+	cherokee_buffer_t            tmp   = CHEROKEE_BUF_INIT;
+	cherokee_avl_flcache_node_t *entry = conn->flcache.avl_node_ref;
+
+	conn->flcache.fd = cherokee_open (entry->file.buf, O_WRONLY | O_CREAT | O_NOFOLLOW, S_IRUSR|S_IWUSR);
+	if (conn->flcache.fd == -1) {
+		char *p;
+
+		/* Try to create 'dir'
+		 */
+		p = strrchr (entry->file.buf, '/');
+		if (p == NULL) {
+			return ret_error;
+		}
+
+		cherokee_buffer_add (&tmp, entry->file.buf, p - entry->file.buf);
+
+		ret = cherokee_mkdir_p_perm (&tmp, 0700, W_OK);
+		if (ret != ret_ok) {
+			LOG_CRITICAL (CHEROKEE_ERROR_FLCACHE_MKDIR, tmp.buf, "write");
+			goto error;
+		}
+
+		TRACE (ENTRIES, "Created directory %s\n", flcache->local_directory.buf);
+
+		/* Second chance
+		 */
+		conn->flcache.fd = cherokee_open (entry->file.buf, O_WRONLY | O_CREAT | O_NOFOLLOW, S_IRUSR|S_IWUSR);
+		if (conn->flcache.fd == -1) {
+			goto error;
+		}
+	}
+
+	TRACE (ENTRIES, "Created flcache file %s\n", entry->file.buf);
+	return ret_ok;
+
+error:
+	cherokee_buffer_mrproper (&tmp);
+	return ret_error;
+}
 
 ret_t
 cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn,
@@ -414,6 +427,13 @@ cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn,
 		cherokee_flcache_del_entry (CONN_VSRV(conn)->flcache, entry);
 
 		return ret_ok;
+	}
+
+	/* Create the cache file
+	 */
+	ret = open_flconn_file (CONN_VSRV(conn)->flcache, conn);
+	if (ret != ret_ok) {
+		return ret_error;
 	}
 
 	/* Write length

@@ -296,7 +296,8 @@ run-tests.py \
 272-Nick-match.py \
 273-Flcache-basic1.py \
 274-Flcache-cookie1.py \
-275-Flcache-cookie2.py
+275-Flcache-cookie2.py \
+276-Flcache-headers1.py
 
 test:
 	python -m compileall .

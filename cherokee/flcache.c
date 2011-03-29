@@ -269,6 +269,8 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 	const char                  *header_end;
 	char                         chr_end;
 	cherokee_avl_flcache_node_t *node        = flcache_conn->avl_node_ref;
+	cherokee_boolean_t           via_found   = false;
+	cherokee_buffer_t           *tmp         = THREAD_TMP_BUF2(CONN_THREAD(conn));
 
 	begin      = header->buf;
 	header_end = header->buf + header->len;
@@ -351,12 +353,34 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 			}
 		}
 
+		/* Via
+		 */
+		else if (strncasecmp (begin, "Via:", 4) == 0) {
+			via_found = true;
+
+			/* Build string */
+			cherokee_buffer_clean (tmp);
+			cherokee_buffer_add_str (tmp, ", ");
+			cherokee_connection_build_host_port_string (conn, tmp);
+			cherokee_buffer_add_str (tmp, " (Cherokee/"PACKAGE_VERSION")");
+
+			/* Insert at the end */
+			cherokee_buffer_insert_buffer (header, tmp, end - header->buf);
+			end += tmp->len;
+		}
+
 	/* next: */
 		*end = chr_end;
 
 		while ((*end == CHR_CR) || (*end == CHR_LF))
 			end++;
 		begin = end;
+	}
+
+	if (! via_found) {
+		cherokee_buffer_add_str (header, "Via: ");
+		cherokee_connection_build_host_port_string (conn, header);
+		cherokee_buffer_add_str (header, " (Cherokee/"PACKAGE_VERSION")" CRLF);
 	}
 
 	return ret_ok;

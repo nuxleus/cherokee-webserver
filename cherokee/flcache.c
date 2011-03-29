@@ -156,8 +156,6 @@ ret_t
 cherokee_flcache_req_is_storable (cherokee_flcache_t    *flcache,
 				  cherokee_connection_t *conn)
 {
-	ret_t ret;
-
 	UNUSED (flcache);
 
 	/* HTTP Method
@@ -371,6 +369,8 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 						node->valid_until = 0;
 					}
 				}
+			} else {
+				node->valid_until = 0;
 			}
 		}
 

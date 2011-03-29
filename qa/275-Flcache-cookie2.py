@@ -1,21 +1,24 @@
 from base import *
 
-DIR     = "flcache-cookie1"
-FILE    = "test.cgi274"
-CONTENT = "Front-line does not cache responses setting cookies"
+DIR     = "flcache-cookie2"
+FILE    = "test.cgi"
+CONTENT = "Front-line can cache responses setting 'diregarded cookies'"
 
 CONF = """
-vserver!1!rule!2740!match = directory
-vserver!1!rule!2740!match!directory = /%(DIR)s
-vserver!1!rule!2740!handler = cgi
-vserver!1!rule!2740!flcache = 1
+vserver!1!rule!2750!match = directory
+vserver!1!rule!2750!match!directory = /%(DIR)s
+vserver!1!rule!2750!handler = cgi
+vserver!1!rule!2750!flcache = 1
+vserver!1!rule!2750!flcache!cookies!do_cache!1!regex = foo
+vserver!1!rule!2750!flcache!cookies!do_cache!2!regex = bogus
+vserver!1!rule!2750!flcache!cookies!do_cache!3!regex = bar
 """ %(globals())
 
 
 CGI_CODE = """#!/bin/sh
 
 echo "Content-Type: text/plain"
-echo "Set-cookie: foo=bar"
+echo "Set-cookie: bogus=galletita"
 echo
 
 echo "%(CONTENT)s"
@@ -35,7 +38,7 @@ class Test (TestCollection):
     def __init__ (self):
         TestCollection.__init__ (self, __file__)
 
-        self.name           = "Front-line cache: Cookie"
+        self.name           = "Front-line cache: Diregarded cookie"
         self.conf           = CONF
         self.proxy_suitable = True
 
@@ -49,4 +52,4 @@ class Test (TestCollection):
 
         # Second request
         obj = self.Add (TestEntry())
-        obj.expected_content = ['X-Cache: MISS', CONTENT]
+        obj.expected_content = ['X-Cache: HIT', CONTENT]

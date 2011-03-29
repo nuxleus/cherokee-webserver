@@ -286,7 +286,7 @@ cherokee_flcache_req_set_store (cherokee_flcache_t    *flcache,
 }
 
 
-static void
+static ret_t
 inspect_header (cherokee_flcache_conn_t *flcache_conn,
 		cherokee_buffer_t       *header,
 		cherokee_connection_t   *conn)
@@ -345,7 +345,8 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 			    strcasestr (begin, "must-revalidate") ||
 			    strcasestr (begin, "proxy-revalidate"))
 			{
-				node->valid_until = 0;
+				return ret_deny;
+				// node->valid_until = 0;
 			}
 
 			/* TODO: max-age= and s-maxage=
@@ -356,21 +357,29 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 		 */
 		else if (strncasecmp (begin, "Set-cookie:", 11) == 0) {
 			if (conn->flcache_cookies_disregard) {
-				int              re;
-				void            *pcre;
-				cherokee_list_t *i;
+				int                 re;
+				void               *pcre;
+				cherokee_list_t    *i;
+				cherokee_boolean_t  matched = false;
 
 				list_for_each (i, conn->flcache_cookies_disregard) {
 					pcre = LIST_ITEM_INFO(i);
 
 					re = pcre_exec (pcre, NULL, begin, end-begin, 0, 0, NULL, 0);
-					if (re < 0) {
-						/* No match -> Invalidate */
-						node->valid_until = 0;
+					if (re >= 0) {
+						matched = true;
+						break;
 					}
 				}
+				if (! matched) {
+					return ret_deny;
+					/* No match -> Invalidate */
+//					node->valid_until = 0;
+
+				}
 			} else {
-				node->valid_until = 0;
+				return ret_deny;
+//				node->valid_until = 0;
 			}
 		}
 
@@ -381,6 +390,8 @@ inspect_header (cherokee_flcache_conn_t *flcache_conn,
 			end++;
 		begin = end;
 	}
+
+	return ret_ok;
 }
 
 
@@ -388,13 +399,22 @@ ret_t
 cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn,
 				     cherokee_connection_t   *conn)
 {
+	ret_t   ret;
 	ssize_t written;
 
 	TRACE (ENTRIES, "Writing header: %d bytes to fd=%d\n", flcache_conn->header.len, flcache_conn->fd);
 
 	/* Inspect header
 	 */
-	inspect_header (flcache_conn, &flcache_conn->header, conn);
+	ret = inspect_header (flcache_conn, &flcache_conn->header, conn);
+	if (ret == ret_deny) {
+		cherokee_avl_flcache_node_t *entry = conn->flcache.avl_node_ref;
+
+		cherokee_flcache_conn_clean (flcache_conn);
+		cherokee_flcache_del_entry (CONN_VSRV(conn)->flcache, entry);
+
+		return ret_ok;
+	}
 
 	/* Write length
 	 */
@@ -551,7 +571,7 @@ cherokee_flcache_del_entry (cherokee_flcache_t          *flcache,
 	ret_t ret;
 
 	ret = cherokee_avl_flcache_del (&flcache->request_map, entry);
-	TRACE (ENTRIES, "Removing expired Front-line cache entry - ret=%d\n", ret);
+	TRACE (ENTRIES, "Removing expired Front-line cache entry '%s' - ret=%d\n", entry->file.buf, ret);
 
 	return ret;
 }

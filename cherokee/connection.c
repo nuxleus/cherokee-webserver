@@ -1532,7 +1532,9 @@ cherokee_connection_step (cherokee_connection_t *conn)
 
 	/* Front-line cache: Store content
 	 */
-	if (conn->flcache.mode == flcache_mode_in) {
+	if ((conn->flcache.mode == flcache_mode_in) &&
+	    (! cherokee_buffer_is_empty (&conn->buffer)))
+	{
 		cherokee_flcache_conn_write_body (&conn->flcache, conn);
 	}
 

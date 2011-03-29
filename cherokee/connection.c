@@ -904,14 +904,8 @@ cherokee_connection_build_header (cherokee_connection_t *conn)
 
 		/* Add X-Cache miss
 		 */
-		cherokee_buffer_add_str    (&conn->header_buffer, "X-Cache: MISS from ");
-		cherokee_buffer_add_buffer (&conn->header_buffer, &conn->host);
-
-		if (! http_port_is_standard (conn->bind->port, conn->socket.is_tls)) {
-			cherokee_buffer_add_char    (&conn->header_buffer, ':');
-			cherokee_buffer_add_ulong10 (&conn->header_buffer, conn->bind->port);
-		}
-
+		cherokee_buffer_add_str (&conn->header_buffer, "X-Cache: MISS from ");
+		cherokee_connection_build_host_port_string (conn, &conn->header_buffer);
 		cherokee_buffer_add_str (&conn->header_buffer, CRLF);
 	}
 
@@ -2831,4 +2825,39 @@ cherokee_connection_update_timeout (cherokee_connection_t *conn)
 	       conn, cherokee_connection_get_phase_str (conn), conn->timeout_lapse);
 
 	conn->timeout = cherokee_bogonow_now + conn->timeout_lapse;
+}
+
+
+ret_t
+cherokee_connection_build_host_port_string (cherokee_connection_t *conn,
+					    cherokee_buffer_t     *buf)
+{
+	/* 1st choice: Request host */
+	if (! cherokee_buffer_is_empty (&conn->host)) {
+		cherokee_buffer_add_buffer (buf, &conn->host);
+	}
+
+	/* 2nd choice: Bound IP */
+	else if ((conn->bind != NULL) &&
+		 (! cherokee_buffer_is_empty (&conn->bind->ip)))
+	{
+		cherokee_buffer_add_buffer (buf, &conn->bind->ip);
+	}
+
+	/* 3rd choice: Bound IP, rendered address */
+	else if ((conn->bind != NULL) &&
+		 (! cherokee_buffer_is_empty (&conn->bind->server_address)))
+	{
+		cherokee_buffer_add_buffer (buf, &conn->bind->server_address);
+	}
+
+	/* Port
+	 */
+	if (! http_port_is_standard (conn->bind->port, conn->socket.is_tls))
+	{
+		cherokee_buffer_add_char    (buf, ':');
+		cherokee_buffer_add_ulong10 (buf, conn->bind->port);
+	}
+
+	return ret_ok;
 }

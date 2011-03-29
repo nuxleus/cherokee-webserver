@@ -217,7 +217,7 @@ anything (static files, dynamic content, or whatever) that passes
 by. This is no small feat, since typically you would have to set up an
 independent front-line cache to achieve similar results, although such
 alternative inherently introduce latency due to the round-trips
-associated to check whether or not the contents have already been
+associated to checking whether or not the contents have already been
 cached. Since Cherokee can process all of this on its own, this
 significant overhead can be totally avoided.
 
@@ -226,10 +226,13 @@ Caching` section: 'Leave unset', 'Allow' and 'Forbid'.
 
 The 'Leave unset' option of the encoders means that, whenever a rule
 is applied, it will not change the status of the caching setting that
-has been inherited from previously matched rules. Allowing cache on a
-rule gives you the possibility to disregard cookies using regular
-expressions, and forbidding a caching setting will guarantee that the
-matched rule will not be cached.
+has been inherited from previously matched rules.
+
+By default, contents that include cookies are not cached, but the
+setting to allowing cache on a rule gives you the possibility to
+disregard cookies using regular expressions (so that even that content
+can be cached), while a caching setting will guarantee that the
+matched rule will not be cached no matter what.
 
 [[security]]
 Security

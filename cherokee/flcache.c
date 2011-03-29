@@ -439,8 +439,6 @@ cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn,
 	ret_t   ret;
 	ssize_t written;
 
-	TRACE (ENTRIES, "Writing header: %d bytes to fd=%d\n", flcache_conn->header.len, flcache_conn->fd);
-
 	/* Inspect header
 	 */
 	ret = inspect_header (flcache_conn, &flcache_conn->header, conn);
@@ -459,6 +457,8 @@ cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn,
 	if (ret != ret_ok) {
 		return ret_error;
 	}
+
+	TRACE (ENTRIES, "Writing header: %d bytes to fd=%d\n", flcache_conn->header.len, flcache_conn->fd);
 
 	/* Write length
 	 */

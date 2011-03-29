@@ -28,6 +28,7 @@
 #include "connection-protected.h"
 #include "list.h"
 #include "util.h"
+#include "bogotime.h"
 
 #define ENTRIES "avl,flcache"
 
@@ -70,6 +71,7 @@ node_new (cherokee_avl_flcache_node_t **node,
 	n->ref_count   = 0;
 	n->file_size   = 0;
 	n->valid_until = TIME_MAX;
+	n->created_at  = cherokee_bogonow_now;
 
 	conn_to_node (conn, n);
 

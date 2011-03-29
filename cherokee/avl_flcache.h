@@ -59,6 +59,8 @@ typedef struct {
 	cherokee_flcache_status_t    status;
 	cherokee_buffer_t            file;
 	cullong_t                    file_size;
+
+	time_t                       created_at;
 	time_t                       valid_until;
 } cherokee_avl_flcache_node_t;
 

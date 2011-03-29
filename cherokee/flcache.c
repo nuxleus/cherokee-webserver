@@ -525,6 +525,12 @@ cherokee_flcache_conn_send_header (cherokee_flcache_conn_t *flcache_conn,
 	cherokee_connection_build_host_port_string (conn, &conn->header_buffer);
 	cherokee_buffer_add_str (&conn->header_buffer, CRLF);
 
+	/* Age (RFC2616, section 14.6)
+	 */
+	cherokee_buffer_add_str    (&conn->header_buffer, "Age: ");
+	cherokee_buffer_add_long10 (&conn->header_buffer, cherokee_bogonow_now - flcache_conn->avl_node_ref->created_at);
+	cherokee_buffer_add_str    (&conn->header_buffer, CRLF);
+
 	return ret_ok;
 }
 

@@ -1444,11 +1444,7 @@ logger.c \
 logger_writer.h \
 logger_writer.c \
 xrealip.h \
-xrealip.c \
-flcache.h \
-flcache.c \
-avl_flcache.h \
-avl_flcache.c
+xrealip.c
 
 
 libcherokee_client_la_SOURCES = \
@@ -1637,7 +1633,11 @@ spawner.c \
 collector.h \
 collector.c \
 header_op.h \
-header_op.c
+header_op.c \
+flcache.h \
+flcache.c \
+avl_flcache.h \
+avl_flcache.c
 
 
 #

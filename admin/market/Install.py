@@ -40,6 +40,7 @@ import SystemInfo
 import SystemStats
 import SaveButton
 import Cherokee
+import Distro
 import popen
 import CommandProgress
 import InstallUtil
@@ -81,14 +82,18 @@ URL_INSTALL_DONE_APPLY     = "%s/install/done/apply"     %(URL_MAIN)
 
 
 class InstallDialog (CTK.Dialog):
-    def __init__ (self, info):
-        title = "%s  —  %s" %(info['application_name'], _("Cherokee Market"))
+    def __init__ (self, app_name):
+        index = Distro.Index()
+        app   = index.get_package (app_name, 'software')
+
+        title = "%s  —  %s" %(app['name'], _("Cherokee Market"))
 
         CTK.Dialog.__init__ (self, {'title': title, 'width': 600, 'minHeight': 300})
-        self.info = info
+        self.info = app
 
-        for key in ('application_id', 'application_name', 'currency_symbol', 'amount', 'currency'):
-            CTK.cfg['tmp!market!install!app!%s'%(key)] = str(info[key])
+        # Copy a couple of preliminary config entries
+        CTK.cfg['tmp!market!install!app!application_id']   = app['id']
+        CTK.cfg['tmp!market!install!app!application_name'] = app['name']
 
         self.refresh = CTK.RefreshableURL()
         self.druid = CTK.Druid(self.refresh)
@@ -123,7 +128,7 @@ class Install_Stage:
 class Welcome (Install_Stage):
     def __safe_call__ (self):
         # Ensure the current UID has enough priviledges
-        if not InstallUtil.current_UID_is_admin():
+        if not InstallUtil.current_UID_is_admin() and 0:
             box = CTK.Box()
             box += CTK.RawHTML ('<h2>%s</h2>' %(_(NO_ROOT_H1)))
             box += CTK.RawHTML ('<p>%s</p>'   %(_(NO_ROOT_P1)))

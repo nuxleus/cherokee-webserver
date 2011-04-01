@@ -99,8 +99,7 @@ class AppInfo (CTK.Box):
         app   = index.get_package (app_name, 'software')
 
         # Install dialog
-        #install = InstallDialog (app_name)
-        #cont += install
+        install = InstallDialog (app_name)
 
         # Author
         by = CTK.Container()
@@ -108,7 +107,7 @@ class AppInfo (CTK.Box):
         by += CTK.LinkWindow (app['URL'], CTK.RawHTML(app['author']))
 
         install_button = CTK.Button (_("Install"))
-        #install_button.bind ('click', install.JS_to_show())
+        install_button.bind ('click', install.JS_to_show())
 
         # Report button
         druid = CTK.Druid (CTK.RefreshableURL())
@@ -136,7 +135,6 @@ class AppInfo (CTK.Box):
         appw += CTK.Box ({'class': 'market-app-desc-category'},    CTK.RawHTML("%s: %s" %(_("Category"), app['category'])))
         appw += CTK.Box ({'class': 'market-app-desc-short-desc'},  CTK.RawHTML(app['desc_short']))
         appw += CTK.Box ({'class': 'market-app-desc-report'},      report)
-        self += appw
 
         # Support
         ext_description = CTK.Box ({'class': 'market-app-desc-description'})
@@ -159,7 +157,11 @@ class AppInfo (CTK.Box):
         tabs = CTK.Tab()
         tabs.Add (_('Screenshots'), shots)
         tabs.Add (_('Description'), desc_panel)
+
+        # GUI Layout
+        self += appw
         self += tabs
+        self += install
 
 
 class App:

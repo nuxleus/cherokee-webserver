@@ -35,40 +35,84 @@ from consts import *
 from ows_consts import *
 from configured import *
 
-class Index:
+
+global_index = None
+
+def Index():
+    global global_index
+
+    if not global_index:
+        global_index = Index_Class()
+
+    return global_index
+
+
+def cached_download (url, return_content=False):
+    # Open the connection
+    request = urllib2.Request (url)
+    opener  = urllib2.build_opener()
+
+    # Cache file
+    url_md5 = CTK.util.md5 (url).hexdigest()
+    cache_file = os.path.join (CHEROKEE_OWS_DIR, url_md5)
+
+    tmp = url.split('?',1)[0] # Remove params
+    ext = tmp.split('.')[-1]  # Extension
+    if len(ext) in range(2,5):
+        cache_file += '.%s'%(ext)
+
+    # Check previos version
+    if os.path.exists (cache_file):
+        s = os.stat (cache_file)
+        t = time.strftime ("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(s.st_mtime))
+        request.add_header ('If-Modified-Since', t)
+
+    # Send request
+    try:
+        stream = opener.open (request)
+    except urllib2.HTTPError, e:
+        if e.code == 304:
+            # 304: Not Modified
+            if return_content:
+                return open (cache_file, 'rb').read()
+            return cache_file
+        raise
+
+    # Content
+    content = stream.read()
+
+    # Store
+    f = open (cache_file, "wb+")
+    f.write (content)
+    f.close()
+
+    if return_content:
+        return open (cache_file, 'rb').read()
+    return cache_file
+
+
+class Index_Class:
     def __init__ (self):
-        self.local_file = "/tmp/index.py.gz"
         self.url        = REPO_MAIN + 'index.py.gz'
         self.content    = {}
+        self.local_file = None
 
-    def Download (self):
-        # Open the connection
-        request = urllib2.Request (self.url)
-        opener  = urllib2.build_opener()
+        # Initialization
+        self.Update()
 
-        # Check previos version
-        if os.path.exists (self.local_file):
-            s = os.stat (self.local_file)
-            t = time.strftime ("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(s.st_mtime))
-            request.add_header ('If-Modified-Since', t)
+    def Update (self):
+        # Download
+        local_file = cached_download (self.url)
 
-        # Send request
-        try:
-            stream = opener.open (request)
-        except urllib2.HTTPError, e:
-            if e.code == 304:
-                # 304: Not Modified
-                return
-            raise
+        # Shortcut: Do not parse if it hasn't changed
+        if ((local_file == self.local_file) and
+            (os.stat(local_file).st_mtime == os.stat(self.local_file).st_mtime)):
+            return
+        self.local_file = local_file
 
-        # Store
-        f = open (self.local_file, "wb+")
-        f.write (stream.read())
-        f.close()
-
-    def Parse (self):
         # Read
-        f = gzip.open (self.local_file, 'rb')
+        print "Reading", local_file
+        f = gzip.open (local_file, 'rb')
         content = f.read()
         f.close()
 
@@ -77,6 +121,9 @@ class Index:
 
     def __getitem__ (self, k):
         return self.content[k]
+
+    def get (self, k, default=None):
+        return self.content.get (k, default)
 
     # Helpers
     #

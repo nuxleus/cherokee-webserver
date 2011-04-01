@@ -105,24 +105,14 @@ class RenderApp (CTK.Box):
         assert type(info) == dict
         CTK.Box.__init__ (self, {'class': 'market-app-entry'})
 
-        self += CTK.Box ({'class': 'market-app-entry-icon'},     CTK.Image({'src': OWS_STATIC + info['icon_small']}))
+        url_icon_small = '%s/%s/icons/%s' %(REPO_MAIN, info['id'], info['icon_small'])
+
+        self += CTK.Box ({'class': 'market-app-entry-icon'},     CTK.Image({'src': url_icon_small}))
         self += CTK.Box ({'class': 'market-app-entry-score'},    CTK.StarRating({'selected': info.get('score', -1)}))
-        self += CTK.Box ({'class': 'market-app-entry-price'},    PriceTag(info))
-        self += CTK.Box ({'class': 'market-app-entry-name'},     CTK.Link ('%s/%s'%(URL_APP, info['application_id']), CTK.RawHTML(info['application_name'])))
-        self += CTK.Box ({'class': 'market-app-entry-category'}, CTK.RawHTML(info['category_name']))
-        self += CTK.Box ({'class': 'market-app-entry-summary'},  CTK.RawHTML(info['summary']))
-
-
-class RenderApp_Featured (CTK.Box):
-    def __init__ (self, info, props):
-        assert type(info) == dict
-        CTK.Box.__init__ (self, props.copy())
-
-        self += CTK.Box ({'class': 'market-app-featured-icon'},     CTK.Image({'src': OWS_STATIC + info['icon_big']}))
-        self += CTK.Box ({'class': 'market-app-featured-name'},     CTK.Link ('%s/%s'%(URL_APP, info['application_id']), CTK.RawHTML(info['application_name'])))
-        self += CTK.Box ({'class': 'market-app-featured-category'}, CTK.RawHTML(info['category_name']))
-        self += CTK.Box ({'class': 'market-app-featured-summary'},  CTK.RawHTML(info['summary']))
-        self += CTK.Box ({'class': 'market-app-featured-score'},    CTK.StarRating({'selected': info.get('score', -1)}))
+        # self += CTK.Box ({'class': 'market-app-entry-price'},    PriceTag(info))
+        self += CTK.Box ({'class': 'market-app-entry-name'},     CTK.Link ('%s/%s'%(URL_APP, info['id']), CTK.RawHTML(info['name'])))
+        self += CTK.Box ({'class': 'market-app-entry-category'}, CTK.RawHTML(info['category']))
+        self += CTK.Box ({'class': 'market-app-entry-summary'},  CTK.RawHTML(info['desc_short']))
 
 
 class PriceTag (CTK.Box):

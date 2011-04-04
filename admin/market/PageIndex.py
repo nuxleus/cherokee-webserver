@@ -64,7 +64,7 @@ class FeaturedBox (CTK.Box):
         app_content += CTK.RawHTML("<h2>%s</h2>" %(_('Featured Applications')))
 
         # Build the list
-        featured_apps = index['featured_apps']
+        featured_apps = list(index['featured_apps'])
         for app_id in featured_apps:
             app = index.get_package (app_id, 'software')
 

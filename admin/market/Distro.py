@@ -26,9 +26,11 @@ import CTK
 
 import re
 import os
+import sys
 import gzip
 import time
 import urllib2
+import threading
 
 from util import *
 from consts import *
@@ -36,14 +38,22 @@ from ows_consts import *
 from configured import *
 
 
-global_index = None
+global_index      = None
+global_index_lock = threading.Lock()
 
 def Index():
     global global_index
 
-    if not global_index:
-        global_index = Index_Class()
+    global_index_lock.acquire()
 
+    if not global_index:
+        try:
+            global_index = Index_Class()
+        except:
+            global_index_lock.release()
+            raise
+
+    global_index_lock.release()
     return global_index
 
 
@@ -69,7 +79,10 @@ def cached_download (url, return_content=False):
 
     # Send request
     try:
-        stream = opener.open (request)
+        if sys.version_info < (2, 6):
+            stream = opener.open (request)
+        else:
+            stream = opener.open (request, timeout=10)
     except urllib2.HTTPError, e:
         if e.code == 304:
             # 304: Not Modified

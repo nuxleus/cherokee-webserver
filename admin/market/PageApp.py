@@ -56,17 +56,32 @@ class SupportBox (CTK.Box):
             self += CTK.RawHTML (name)
 
     class Support_Block (CTK.Container):
+        REPLACEMENTS = {
+            'macosx':  'MacOS X',
+            'sqlite3': 'SQLite',
+        }
         def __init__ (self, info, sure_inclusion):
             CTK.Container.__init__ (self)
 
+            info       = list(info)
+            info_lower = [x.lower() for x in info]
+            sure_lower = [x.lower() for x in sure_inclusion]
+
+            # Initial replacements
+            for rep in self.REPLACEMENTS:
+                if rep in info_lower:
+                    info[info.index(rep)]             = self.REPLACEMENTS[rep]
+                    info_lower[info_lower.index(rep)] = self.REPLACEMENTS[rep].lower()
+
             # These entries will always be shown
             for entry in sure_inclusion:
-                self += SupportBox.Support_Entry (entry, entry in info)
+                self += SupportBox.Support_Entry (entry, entry.lower() in info_lower)
 
             # Additional entries
-            rest = filter (lambda x: x not in (sure_inclusion), info)
-            for entry in rest:
-                if entry in info:
+            for entry in info:
+                if entry.lower() in sure_lower:
+                    continue
+                if entry.lower() in info_lower:
                     self += SupportBox.Support_Entry (entry, True)
 
     def __init__ (self, app_name):

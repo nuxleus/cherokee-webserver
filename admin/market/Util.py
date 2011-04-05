@@ -105,7 +105,8 @@ class RenderApp (CTK.Box):
         assert type(info) == dict
         CTK.Box.__init__ (self, {'class': 'market-app-entry'})
 
-        url_icon_small = '%s/%s/icons/%s' %(REPO_MAIN, info['id'], info['icon_small'])
+        repo_url = CTK.cfg.get_val ('admin!ows!repository', REPO_MAIN)
+        url_icon_small = os.path.join (repo_url, info['id'], "icons", info['icon_small'])
 
         self += CTK.Box ({'class': 'market-app-entry-icon'},     CTK.Image({'src': url_icon_small}))
         self += CTK.Box ({'class': 'market-app-entry-score'},    CTK.StarRating({'selected': info.get('score', -1)}))

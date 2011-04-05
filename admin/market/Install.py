@@ -193,7 +193,8 @@ class Download (Install_Stage):
         index = Distro.Index()
         pkg   = index.get_package (app_id, 'package')
 
-        url_download = '%s/%s/%s' %(REPO_MAIN, app_id, pkg['filename'])
+        repo_url = CTK.cfg.get_val ('admin!ows!repository', REPO_MAIN)
+        url_download = os.path.join (repo_url, app_id, pkg['filename'])
         CTK.cfg['tmp!market!install!download'] = url_download
 
         # Local storage shortcut

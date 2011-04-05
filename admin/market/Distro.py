@@ -106,7 +106,9 @@ def cached_download (url, return_content=False):
 
 class Index_Class:
     def __init__ (self):
-        self.url        = REPO_MAIN + 'index.py.gz'
+        repo_url = CTK.cfg.get_val ('admin!ows!repository', REPO_MAIN)
+
+        self.url        = os.path.join (repo_url, 'index.py.gz')
         self.content    = {}
         self.local_file = None
 

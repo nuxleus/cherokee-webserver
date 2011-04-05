@@ -139,7 +139,8 @@ class AppInfo (CTK.Box):
         report += report_link
 
         # Info
-        url_icon_big = '%s/%s/icons/%s' %(REPO_MAIN, app['id'], app['icon_big'])
+        repo_url = CTK.cfg.get_val ('admin!ows!repository', REPO_MAIN)
+        url_icon_big = os.path.join (repo_url, app['id'], "icons", app['icon_big'])
 
         appw  = CTK.Box ({'class': 'market-app-desc'})
         appw += CTK.Box ({'class': 'market-app-desc-icon'},        CTK.Image({'src': url_icon_big}))
@@ -164,7 +165,7 @@ class AppInfo (CTK.Box):
 
         if shot_entries:
             for s in shot_entries:
-                shots += CTK.Image ({'src': "%s/%s/screenshots/%s" %(REPO_MAIN, app_name, s)})
+                shots += CTK.Image ({'src': os.path.join (repo_url, app_name, "screenshots", s)})
         else:
             shots += CTK.Box ({'id': 'shot-box-empty'}, CTK.RawHTML ('<h2>%s</h2>' %(_("No screenshots"))))
 

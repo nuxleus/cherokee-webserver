@@ -134,7 +134,7 @@ class AppInfo (CTK.Box):
 
         report_link = CTK.Link (None, CTK.RawHTML(_("Report issue")))
         report_link.bind ('click', report_dialog.JS_to_show() + \
-                                   druid.JS_to_goto('"%s"'%(URL_REPORT)))
+                                   druid.JS_to_goto('"%s/%s"'%(URL_REPORT, app_name)))
 
         report = CTK.Container()
         report += report_dialog

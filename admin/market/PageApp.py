@@ -111,7 +111,9 @@ class AppInfo (CTK.Box):
         CTK.Box.__init__ (self, {'class': 'cherokee-market-app'})
 
         index = Distro.Index()
-        app   = index.get_package (app_name, 'software')
+
+        app        = index.get_package (app_name, 'software')
+        maintainer = index.get_package (app_name, 'maintainer')
 
         # Install dialog
         install = InstallDialog (app_name)
@@ -148,6 +150,7 @@ class AppInfo (CTK.Box):
         appw += CTK.Box ({'class': 'market-app-desc-title'},       CTK.RawHTML(app['name']))
         appw += CTK.Box ({'class': 'market-app-desc-version'},     CTK.RawHTML("%s: %s" %(_("Version"), app['version'])))
         appw += CTK.Box ({'class': 'market-app-desc-url'},         by)
+        appw += CTK.Box ({'class': 'market-app-desc-packager'},    CTK.RawHTML("%s: %s" %(_("Packager"), maintainer['name'] or _("Orphan"))))
         appw += CTK.Box ({'class': 'market-app-desc-category'},    CTK.RawHTML("%s: %s" %(_("Category"), app['category'])))
         appw += CTK.Box ({'class': 'market-app-desc-short-desc'},  CTK.RawHTML(app['desc_short']))
         appw += CTK.Box ({'class': 'market-app-desc-report'},      report)

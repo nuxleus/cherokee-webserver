@@ -126,7 +126,6 @@ class Index_Class:
         self.local_file = local_file
 
         # Read
-        print "Reading", local_file
         f = gzip.open (local_file, 'rb')
         content = f.read()
         f.close()

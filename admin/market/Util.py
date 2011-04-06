@@ -60,7 +60,7 @@ class Page_Market (Page.Base):
         # Top
         from PageSearch import Search_Widget
         top = CTK.Box({'id': 'top-box'})
-        top += CTK.RawHTML ("<h1>%s</h1>"% _('Market'))
+        top += CTK.RawHTML ("<h1>%s</h1>"% _("Apps Center"))
         top += Search_Widget()
 
         # Sidebar

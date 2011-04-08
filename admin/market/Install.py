@@ -210,7 +210,7 @@ class Download (Install_Stage):
                     pkg_revision = max (pkg_revision, int(tmp[0]))
 
         if pkg_revision > 0:
-            pkg_fullpath = os.path.join (CHEROKEE_OWS_DIR, "packages", app_id, '%s_%d.pkg' %(pkg_filename, pkg_revision))
+            pkg_fullpath = os.path.join (CHEROKEE_OWS_DIR, "packages", app_id, '%s_%d.cpk' %(pkg_filename, pkg_revision))
             CTK.cfg['tmp!market!install!local_package'] = pkg_fullpath
 
             Install_Log.log ("Using local repository package: %s" %(pkg_fullpath))

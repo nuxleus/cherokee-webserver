@@ -42,7 +42,7 @@ class Categories_Widget (CTK.Box):
 
         # Build category list
         category_names = []
-        for app_name in index.get('packages'):
+        for app_name in index.get('packages') or []:
             cat_name = index.get_package (app_name, 'software').get('category')
             if cat_name and not cat_name in category_names:
                 category_names.append (cat_name)

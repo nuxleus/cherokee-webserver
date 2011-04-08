@@ -64,7 +64,7 @@ class FeaturedBox (CTK.Box):
         app_content += CTK.RawHTML("<h2>%s</h2>" %(_('Featured Applications')))
 
         # Build the list
-        featured_apps = list(index['featured_apps'])
+        featured_apps = list(index.get('featured_apps') or [])
         for app_id in featured_apps:
             app = index.get_package (app_id, 'software')
 
@@ -105,10 +105,21 @@ class TopApps (CTK.Box):
         CTK.Box.__init__ (self, {'class': 'market-top-box'})
         index = Distro.Index()
 
-        for app_name in index.get('top_apps'):
+        for app_name in index.get('top_apps') or []:
             app = index.get_package(app_name, 'software')
             self += RenderApp (app)
 
+
+class RepoError (CTK.Box):
+    def __init__ (self):
+        CTK.Box.__init__ (self, {'class': 'market-repo-error'})
+
+        repo_url = CTK.cfg.get_val ('admin!ows!repository', REPO_MAIN)
+
+        self += CTK.RawHTML ('<h2>%s</h2>'%(_("Could not access the repository")))
+        self += CTK.RawHTML ('<p>%s: ' %(_("Cherokee could not reach the remote package repository")))
+        self += CTK.LinkWindow (repo_url, CTK.RawHTML(repo_url))
+        self += CTK.RawHTML ('.</p>')
 
 
 class Main:
@@ -118,6 +129,12 @@ class Main:
             return CTK.HTTP_Redir('/')
 
         page = Page_Market()
+
+        # Check repository is accessible
+        index = Distro.Index()
+        if index.error:
+            page.mainarea += RepoError()
+            return page.Render()
 
         # Featured
         page.mainarea += FeaturedBox()

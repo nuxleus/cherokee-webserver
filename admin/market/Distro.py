@@ -111,13 +111,18 @@ class Index_Class:
         self.url        = os.path.join (repo_url, 'index.py.gz')
         self.content    = {}
         self.local_file = None
+        self.error      = False
 
         # Initialization
         self.Update()
 
     def Update (self):
         # Download
-        local_file = cached_download (self.url)
+        try:
+            local_file = cached_download (self.url)
+        except urllib2.HTTPError, e:
+            self.error = True
+            return
 
         # Shortcut: Do not parse if it hasn't changed
         if ((local_file == self.local_file) and

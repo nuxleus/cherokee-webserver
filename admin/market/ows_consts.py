@@ -41,4 +41,4 @@ URL_CATEGORY     = '/market/category'
 URL_REVIEW       = '/market/review'
 URL_REPORT       = '/market/report'
 
-REPO_MAIN        = 'http://www.cherokee-project.com/download/distribution/'
+REPO_MAIN        = 'http://www.cherokee-project.com/download/distribution'

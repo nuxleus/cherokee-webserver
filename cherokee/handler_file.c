@@ -621,6 +621,7 @@ cherokee_handler_file_custom_init (cherokee_handler_file_t *fhdl,
 				(conn->encoder == NULL) &&
 				(conn->encoder_new_func == NULL) &&
 				(conn->socket.is_tls == non_TLS) &&
+				(conn->flcache.mode == flcache_mdoe_undef) &&
 				(fhdl->info->st_size >= srv->sendfile.min) &&
 				(fhdl->info->st_size <  srv->sendfile.max));
 

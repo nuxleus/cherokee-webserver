@@ -504,7 +504,6 @@ cherokee_flcache_conn_write_body (cherokee_flcache_conn_t *flcache_conn,
 	}
 
 	flcache_conn->avl_node_ref->file_size += written;
-
 	return ret_ok;
 }
 

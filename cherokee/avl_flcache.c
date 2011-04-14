@@ -66,7 +66,7 @@ node_new (cherokee_avl_flcache_node_t **node,
 	cherokee_buffer_init (&n->file);
 	CHEROKEE_MUTEX_INIT (&n->ref_count_mutex, CHEROKEE_MUTEX_FAST);
 
-	n->conn_ref    = conn;
+	n->conn_ref    = NULL;
 	n->status      = flcache_status_undef;
 	n->ref_count   = 0;
 	n->file_size   = 0;

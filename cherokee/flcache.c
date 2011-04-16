@@ -546,7 +546,6 @@ cherokee_flcache_conn_send_header (cherokee_flcache_conn_t *flcache_conn,
 	ret = cherokee_buffer_read_from_fd (&conn->header_buffer, flcache_conn->fd, len, &got2);
 	if (unlikely (ret != ret_ok)) {
 		// TODO: check errno
-		printf ("Error header %d\n", errno);
 		return ret_error;
 	}
 
@@ -639,6 +638,8 @@ ret_t
 cherokee_flcache_conn_clean (cherokee_flcache_conn_t *flcache_conn)
 {
 	cherokee_avl_flcache_node_t *entry = flcache_conn->avl_node_ref;
+
+	TRACE (ENTRIES, "Cleaning up %s\n", "flcache_conn");
 
 	/* Unreference entry
 	 */

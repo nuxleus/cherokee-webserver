@@ -173,11 +173,11 @@ cmp_encoding (cherokee_avl_flcache_node_t *A,
 	ret_t                        ret;
 	int                          re;
 	char                        *p;
-	char                        *header;
-	cuint_t                      header_len;
 	cherokee_connection_t       *conn;
 	cherokee_avl_flcache_node_t *node;
 	cherokee_boolean_t           invert;
+	char                        *header      = NULL;
+	cuint_t                      header_len;
 
 	/* Comparing against a cherokee_connection_t
 	 */
@@ -239,6 +239,12 @@ cmp_encoding (cherokee_avl_flcache_node_t *A,
 					return 0;
 				}
 			}
+		}
+
+		/* Node isn't encoded
+		 */
+		if (cherokee_buffer_is_empty (&node->content_encoding)) {
+			return 0;
 		}
 
 		/* Not supported

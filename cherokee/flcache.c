@@ -628,7 +628,9 @@ cherokee_flcache_del_entry (cherokee_flcache_t          *flcache,
 	ret_t ret;
 
 	ret = cherokee_avl_flcache_del (&flcache->request_map, entry);
-	TRACE (ENTRIES, "Removing expired Front-line cache entry '%s' - ret=%d\n", entry->file.buf, ret);
+
+	TRACE (ENTRIES, "Removing expired Front-line cache entry '%s' - ret=%d\n",
+	       entry->file.buf ? entry->file.buf : "", ret);
 
 	return ret;
 }

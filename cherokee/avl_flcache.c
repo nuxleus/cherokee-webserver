@@ -410,7 +410,7 @@ cherokee_avl_flcache_cleanup (cherokee_avl_flcache_t *avl)
 	list_for_each_safe (i, j, &to_delete) {
 		cherokee_avl_flcache_node_t *node = list_entry (i, cherokee_avl_flcache_node_t, to_del);
 
-		TRACE (ENTRIES, "Removing Front-line cache file: '%s'\n", node->file.buf);
+		TRACE (ENTRIES, "Removing Front-line cache file: '%s'\n", node->file.buf ? node->file.buf : "");
 
 		/* Delete local file */
 		if (! cherokee_buffer_is_empty (&node->file)) {

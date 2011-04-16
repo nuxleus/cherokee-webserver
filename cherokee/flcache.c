@@ -453,6 +453,18 @@ cherokee_flcache_conn_commit_header (cherokee_flcache_conn_t *flcache_conn,
 	ret_t   ret;
 	ssize_t written;
 
+	/* Do not cache non-200 responses
+	 */
+	if (conn->error_code != http_ok) {
+		cherokee_avl_flcache_node_t *entry = conn->flcache.avl_node_ref;
+
+		cherokee_flcache_conn_clean (flcache_conn);
+		cherokee_flcache_del_entry (CONN_VSRV(conn)->flcache, entry);
+
+		TRACE (ENTRIES, "Front Line Cache: Non %d response. Cache object cancelled.\n", 200);
+		return ret_deny;
+	}
+
 	/* Inspect header
 	 */
 	ret = inspect_header (flcache_conn, &flcache_conn->header, conn);

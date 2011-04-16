@@ -1259,7 +1259,7 @@ process_active_connections (cherokee_thread_t *thd)
 			if (conn->flcache.mode == flcache_mode_in) {
 				ret = cherokee_flcache_conn_commit_header (&conn->flcache, conn);
 				if (ret != ret_ok) {
-					// TODO: Handler error
+					/* Flcache has been disabled */
 				}
 			}
 

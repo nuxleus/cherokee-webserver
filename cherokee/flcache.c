@@ -160,35 +160,49 @@ cherokee_flcache_req_is_storable (cherokee_flcache_t    *flcache,
 
 	/* HTTP Method
 	 */
-	if (conn->header.method != http_get)
+	if (conn->header.method != http_get) {
+		TRACE (ENTRIES, "Not storable: method(%d) != GET\n", conn->header.method);
 		return ret_deny;
+	}
 
 	/* HTTPs
 	 */
-	if (conn->socket.is_tls == TLS)
+	if (conn->socket.is_tls == TLS) {
+		TRACE (ENTRIES, "Not storable: Connection is %s\n", "TLS");
 		return ret_deny;
+	}
 
 	/* Authenticated
 	 */
-	if (conn->validator != NULL)
+	if (conn->validator != NULL) {
+		TRACE (ENTRIES, "Not storable: Content requires %s\n", "authentication");
 		return ret_deny;
+	}
 
 	/* Expiration
 	 */
-	if (conn->expiration == cherokee_expiration_epoch)
+	if (conn->expiration == cherokee_expiration_epoch) {
+		TRACE (ENTRIES, "Not storable: Alredy expired at '%s'\n", "epoch");
 		return ret_deny;
+	}
 
 	if ((conn->expiration_prop & cherokee_expiration_prop_no_cache) ||
 	    (conn->expiration_prop & cherokee_expiration_prop_no_store) ||
 	    (conn->expiration_prop & cherokee_expiration_prop_must_revalidate) ||
 	    (conn->expiration_prop & cherokee_expiration_prop_proxy_revalidate))
+	{
+		TRACE (ENTRIES, "Not storable: Expiration props: %d\n", conn->expiration_prop);
 		return ret_deny;
+	}
 
 	/* Range
 	 */
-	if ((conn->range_end != -1) || (conn->range_start != -1))
+	if ((conn->range_end != -1) || (conn->range_start != -1)) {
+		TRACE (ENTRIES, "Not storable: Requested a range (%d, %d)\n", conn->range_start, conn->range_end);
 		return ret_deny;
+	}
 
+	TRACE (ENTRIES, "Request can be %s\n", "stored");
 	return ret_ok;
 }
 

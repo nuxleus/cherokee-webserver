@@ -299,7 +299,10 @@ run-tests.py \
 275-Flcache-cookie2.py \
 276-Flcache-headers1.py \
 277-Flcache-headers2.py \
-278-Flcache-gzip1.py
+278-Flcache-gzip1.py \
+279-Flcache-expired1.py \
+280-Flcache-expired2.py \
+281-Flcache-expired3.py
 
 test:
 	python -m compileall .

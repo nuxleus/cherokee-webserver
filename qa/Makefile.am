@@ -298,7 +298,8 @@ run-tests.py \
 274-Flcache-cookie1.py \
 275-Flcache-cookie2.py \
 276-Flcache-headers1.py \
-277-Flcache-headers2.py
+277-Flcache-headers2.py \
+278-Flcache-gzip1.py
 
 test:
 	python -m compileall .
